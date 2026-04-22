@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.data import demo
 from app.models import BacktestRequest, BacktestResponse
 from app.quant.backtest import run_backtest
 
 app = FastAPI(title="InvestPro API", version="0.1.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 BACKTESTS: dict[str, BacktestResponse] = {}
 
