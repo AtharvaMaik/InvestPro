@@ -4,7 +4,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from app.data import demo
+from app.data import demo, live
 from app.models import BacktestRequest, BacktestResponse, ComparisonResult, WarningMessage
 from app.quant.factors import average_traded_value, composite_scores, momentum, trailing_volatility, zscore_factor
 from app.quant.metrics import calculate_metrics, drawdown_series, wealth_index
@@ -14,12 +14,12 @@ FACTOR_DEFS = {factor["id"]: factor for factor in demo.FACTORS}
 
 
 def run_backtest(request: BacktestRequest) -> BacktestResponse:
-    warnings = [WarningMessage(code="DEMO_DATA", message="This result uses seeded demo data for product validation.")]
+    warnings = []
     unknown = [factor.id for factor in request.factors if factor.id not in FACTOR_DEFS]
     if unknown:
         raise ValueError(f"Unsupported factor ids: {', '.join(unknown)}")
 
-    prices = demo.price_data()
+    prices = _price_data(request, warnings)
     symbols = request.customSymbols or demo.SYMBOLS
     prices = prices[prices["symbol"].isin(symbols)]
     start = pd.Timestamp(request.startDate)
@@ -77,9 +77,9 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
     strategy_metrics["annualTurnover"] = _annual_turnover(holdings)
     strategy_metrics["transactionCostDrag"] = _transaction_cost_drag(holdings, transaction_cost_rate)
 
-    comparisons = _comparison_results(request, portfolio_returns)
-    equity_curve = _equity_curve(strategy_wealth, request)
-    drawdowns = _drawdown_points(strategy_wealth, request)
+    comparisons = _comparison_results(request, portfolio_returns, warnings)
+    equity_curve = _equity_curve(strategy_wealth, request, warnings)
+    drawdowns = _drawdown_points(strategy_wealth, request, warnings)
 
     return BacktestResponse(
         id=f"bt_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
@@ -102,6 +102,24 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
         comparisons=comparisons,
         warnings=warnings,
     )
+
+
+def _price_data(request: BacktestRequest, warnings: list[WarningMessage]) -> pd.DataFrame:
+    symbols = request.customSymbols or demo.SYMBOLS
+    if request.dataSource == "demo":
+        warnings.append(WarningMessage(code="DEMO_DATA", message="This result uses seeded demo data for product validation."))
+        return demo.price_data()
+
+    try:
+        return live.price_data(symbols, request.startDate, request.endDate)
+    except Exception as exc:
+        warnings.append(
+            WarningMessage(
+                code="LIVE_DATA_FALLBACK",
+                message=f"Live stock data could not be fetched, so seeded demo prices were used instead. Reason: {exc}",
+            )
+        )
+        return demo.price_data()
 
 
 def _monthly_rebalance_dates(index: pd.DatetimeIndex) -> list[pd.Timestamp]:
@@ -150,9 +168,13 @@ def _transaction_cost_drag(holdings: list[dict], cost_rate: float) -> float:
     return float(sum(entry["turnover"] * cost_rate for entry in holdings))
 
 
-def _comparison_results(request: BacktestRequest, strategy_returns: pd.Series) -> list[ComparisonResult]:
+def _comparison_results(
+    request: BacktestRequest,
+    strategy_returns: pd.Series,
+    warnings: list[WarningMessage],
+) -> list[ComparisonResult]:
     results: list[ComparisonResult] = []
-    benchmark = demo.benchmark_series().pct_change().fillna(0).reindex(strategy_returns.index).fillna(0)
+    benchmark = _benchmark_series(request, warnings).pct_change().fillna(0).reindex(strategy_returns.index).fillna(0)
     for benchmark_id in request.benchmarks:
         if benchmark_id == "nifty50-demo":
             results.append(
@@ -165,8 +187,11 @@ def _comparison_results(request: BacktestRequest, strategy_returns: pd.Series) -
                 )
             )
 
-    funds = demo.mutual_fund_navs()
-    fund_names = {fund["schemeCode"]: fund["schemeName"] for fund in demo.MUTUAL_FUNDS}
+    funds = _mutual_fund_navs(request, warnings)
+    fund_names = {
+        fund["schemeCode"]: fund["schemeName"]
+        for fund in [*demo.MUTUAL_FUNDS, *live.CURATED_MUTUAL_FUNDS]
+    }
     for scheme_code in request.mutualFunds:
         if scheme_code in funds:
             fund_returns = funds[scheme_code].pct_change().fillna(0).reindex(strategy_returns.index).fillna(0)
@@ -182,12 +207,12 @@ def _comparison_results(request: BacktestRequest, strategy_returns: pd.Series) -
     return results
 
 
-def _equity_curve(strategy_wealth: pd.Series, request: BacktestRequest) -> list[dict]:
+def _equity_curve(strategy_wealth: pd.Series, request: BacktestRequest, warnings: list[WarningMessage]) -> list[dict]:
     frame = pd.DataFrame({"strategy": strategy_wealth})
     if "nifty50-demo" in request.benchmarks:
-        frame["nifty50-demo"] = demo.benchmark_series().reindex(frame.index).ffill().bfill()
+        frame["nifty50-demo"] = _benchmark_series(request, warnings).reindex(frame.index).ffill().bfill()
         frame["nifty50-demo"] = frame["nifty50-demo"] / frame["nifty50-demo"].iloc[0]
-    funds = demo.mutual_fund_navs()
+    funds = _mutual_fund_navs(request, warnings)
     for scheme_code in request.mutualFunds:
         if scheme_code in funds:
             frame[scheme_code] = funds[scheme_code].reindex(frame.index).ffill().bfill()
@@ -195,12 +220,12 @@ def _equity_curve(strategy_wealth: pd.Series, request: BacktestRequest) -> list[
     return [{"date": index.date().isoformat(), **{column: float(row[column]) for column in frame.columns}} for index, row in frame.iterrows()]
 
 
-def _drawdown_points(strategy_wealth: pd.Series, request: BacktestRequest) -> list[dict]:
+def _drawdown_points(strategy_wealth: pd.Series, request: BacktestRequest, warnings: list[WarningMessage]) -> list[dict]:
     frame = pd.DataFrame({"strategy": drawdown_series(strategy_wealth)})
     if "nifty50-demo" in request.benchmarks:
-        benchmark = demo.benchmark_series().reindex(frame.index).ffill().bfill()
+        benchmark = _benchmark_series(request, warnings).reindex(frame.index).ffill().bfill()
         frame["nifty50-demo"] = drawdown_series(benchmark / benchmark.iloc[0])
-    funds = demo.mutual_fund_navs()
+    funds = _mutual_fund_navs(request, warnings)
     for scheme_code in request.mutualFunds:
         if scheme_code in funds:
             nav = funds[scheme_code].reindex(frame.index).ffill().bfill()
@@ -220,3 +245,40 @@ def _monthly_win_rate(strategy: pd.Series, comparison: pd.Series) -> float | Non
     if aligned.empty:
         return None
     return float((aligned.iloc[:, 0] > aligned.iloc[:, 1]).mean())
+
+
+def _benchmark_series(request: BacktestRequest, warnings: list[WarningMessage]) -> pd.Series:
+    if request.dataSource == "demo":
+        return demo.benchmark_series()
+    try:
+        return live.benchmark_series(request.startDate, request.endDate)
+    except Exception as exc:
+        _append_once(
+            warnings,
+            WarningMessage(
+                code="LIVE_BENCHMARK_FALLBACK",
+                message=f"Live Nifty benchmark data could not be fetched, so demo benchmark data was used. Reason: {exc}",
+            ),
+        )
+        return demo.benchmark_series()
+
+
+def _mutual_fund_navs(request: BacktestRequest, warnings: list[WarningMessage]) -> dict[str, pd.Series]:
+    if request.dataSource == "demo":
+        return demo.mutual_fund_navs()
+    try:
+        return live.mutual_fund_navs(request.mutualFunds)
+    except Exception as exc:
+        _append_once(
+            warnings,
+            WarningMessage(
+                code="LIVE_MUTUAL_FUND_FALLBACK",
+                message=f"Live mutual fund NAV data could not be fetched, so demo NAV data was used. Reason: {exc}",
+            ),
+        )
+        return demo.mutual_fund_navs()
+
+
+def _append_once(warnings: list[WarningMessage], warning: WarningMessage) -> None:
+    if not any(existing.code == warning.code for existing in warnings):
+        warnings.append(warning)

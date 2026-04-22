@@ -10,6 +10,8 @@ The current vertical slice includes:
 - Monthly long-only equal-weight backtesting.
 - Performance, drawdown, turnover, and comparison metrics.
 - Next.js dashboard with strategy controls, charts, tables, warnings, and responsive styling.
+- Info buttons that explain finance terms in plain language.
+- Optional live data mode using Yahoo Finance-compatible NSE symbols and MFAPI mutual fund NAVs.
 
 ## Repository Layout
 
@@ -74,13 +76,22 @@ npm run build
 1. Start the backend on port 8000.
 2. Start the frontend on port 3000.
 3. Open the InvestPro workspace.
-4. Keep the default universe, factors, benchmark, and mutual fund.
+4. Keep `Demo data` selected for deterministic seeded data, or choose `Live data` to fetch current provider data.
 5. Click `Run backtest`.
 6. Review the equity curve, drawdown, metrics, comparison table, latest holdings, and demo-data warning.
 
+## Live Data Mode
+
+Live mode currently uses:
+
+- `yfinance` for Indian equity and Nifty price history using symbols such as `RELIANCE.NS`.
+- MFAPI for Indian mutual fund search and historical NAVs.
+
+If a live provider fails, the backend returns a warning and falls back to demo data instead of breaking the research flow.
+
 ## Current Limitations
 
-- Uses seeded demo data, not live NSE or AMFI data.
+- Live price data depends on provider availability and is not yet cached locally.
 - Price-based factors only.
 - Monthly rebalance only.
 - Equal-weight portfolio only.

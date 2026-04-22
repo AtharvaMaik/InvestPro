@@ -1,6 +1,8 @@
 "use client";
 
 import type { BacktestRequest, Benchmark, FactorMeta, MutualFund, Universe } from "@/lib/api";
+import { InfoButton } from "@/components/info-button";
+import { glossary } from "@/lib/glossary";
 
 type Props = {
   universes: Universe[];
@@ -33,7 +35,19 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
       </div>
 
       <label className="field">
-        <span>Universe</span>
+        <span className="label-with-info">
+          Data source <InfoButton label="data source" description={glossary.dataSource} />
+        </span>
+        <select value={config.dataSource} onChange={(event) => update({ dataSource: event.target.value as "demo" | "live" })}>
+          <option value="demo">Demo data</option>
+          <option value="live">Live data</option>
+        </select>
+      </label>
+
+      <label className="field">
+        <span className="label-with-info">
+          Universe <InfoButton label="universe" description={glossary.universe} />
+        </span>
         <select value={config.universeId} onChange={(event) => update({ universeId: event.target.value })}>
           {universes.map((universe) => (
             <option key={universe.id} value={universe.id}>
@@ -45,11 +59,15 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
 
       <div className="field-grid">
         <label className="field">
-          <span>Start</span>
+          <span className="label-with-info">
+            Start <InfoButton label="date range" description={glossary.dateRange} />
+          </span>
           <input type="date" value={config.startDate} onChange={(event) => update({ startDate: event.target.value })} />
         </label>
         <label className="field">
-          <span>End</span>
+          <span className="label-with-info">
+            End <InfoButton label="date range" description={glossary.dateRange} />
+          </span>
           <input type="date" value={config.endDate} onChange={(event) => update({ endDate: event.target.value })} />
         </label>
       </div>
@@ -63,7 +81,9 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
       </div>
 
       <label className="field">
-        <span>Transaction cost: {config.transactionCostBps} bps</span>
+        <span className="label-with-info">
+          Transaction cost: {config.transactionCostBps} bps <InfoButton label="transaction cost" description={glossary.transactionCost} />
+        </span>
         <input
           type="range"
           min="0"
@@ -75,7 +95,9 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
       </label>
 
       <div className="factor-list">
-        <div className="section-label">Factors</div>
+        <div className="section-label label-with-info">
+          Factors <InfoButton label="factors" description={glossary.factors} />
+        </div>
         {factors.map((factor) => {
           const selected = config.factors.find((entry) => entry.id === factor.id);
           return (
@@ -98,7 +120,9 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
       </div>
 
       <label className="field">
-        <span>Benchmark</span>
+        <span className="label-with-info">
+          Benchmark <InfoButton label="benchmark" description={glossary.benchmark} />
+        </span>
         <select value={config.benchmarks[0] ?? ""} onChange={(event) => update({ benchmarks: [event.target.value] })}>
           {benchmarks.map((benchmark) => (
             <option key={benchmark.id} value={benchmark.id}>
@@ -109,7 +133,9 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
       </label>
 
       <label className="field">
-        <span>Mutual fund</span>
+        <span className="label-with-info">
+          Mutual fund <InfoButton label="mutual fund" description={glossary.mutualFund} />
+        </span>
         <select value={config.mutualFunds[0] ?? ""} onChange={(event) => update({ mutualFunds: [event.target.value] })}>
           {mutualFunds.map((fund) => (
             <option key={fund.schemeCode} value={fund.schemeCode}>

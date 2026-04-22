@@ -12,6 +12,7 @@ class FactorSelection(BaseModel):
 
 
 class BacktestRequest(BaseModel):
+    dataSource: Literal["demo", "live"] = "demo"
     universeId: str
     customSymbols: list[str] = Field(default_factory=list)
     startDate: date

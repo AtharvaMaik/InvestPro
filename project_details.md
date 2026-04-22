@@ -504,6 +504,11 @@ Response:
 
 Purpose: search mutual funds by name.
 
+Optional query parameter:
+
+- `source=demo` returns seeded funds.
+- `source=live` searches MFAPI and falls back to seeded funds if MFAPI is unavailable.
+
 Response:
 
 ```json
@@ -659,6 +664,9 @@ HTTP status: `404`.
 | `INSUFFICIENT_DATA` | 422 | Not enough stock data for selected factors. | Explain which factor needs more history. |
 | `COMPARISON_NOT_FOUND` | 404 | Benchmark or mutual fund id does not exist. | Remove invalid comparison and prompt reselection. |
 | `PROVIDER_FAILURE` | 502 | External provider failed. | Offer retry and keep cached/demo data if available. |
+| `LIVE_DATA_FALLBACK` | 200 | Live stock data failed and seeded demo prices were used. | Show a warning while keeping the backtest usable. |
+| `LIVE_BENCHMARK_FALLBACK` | 200 | Live benchmark data failed and seeded benchmark data was used. | Show a warning in comparison areas. |
+| `LIVE_MUTUAL_FUND_FALLBACK` | 200 | Live mutual fund NAV data failed and seeded NAV data was used. | Show a warning in mutual fund comparison areas. |
 
 ## 9. Frontend Flow
 
@@ -673,6 +681,7 @@ HTTP status: `404`.
 
 Controls:
 
+- Data source selector: demo or live.
 - Universe dropdown.
 - Date range inputs.
 - Factor checklist with weight sliders or numeric fields.

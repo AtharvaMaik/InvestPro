@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.data import demo
+from app.data import demo, live
 from app.models import BacktestRequest, BacktestResponse
 from app.quant.backtest import run_backtest
 
@@ -40,7 +40,12 @@ def benchmarks() -> dict[str, list[dict]]:
 
 
 @app.get("/mutual-funds/search")
-def mutual_fund_search(query: str | None = None) -> dict[str, list[dict]]:
+def mutual_fund_search(query: str | None = None, source: str = "demo") -> dict[str, list[dict]]:
+    if source == "live":
+        try:
+            return {"results": live.search_mutual_funds(query)}
+        except Exception:
+            return {"results": demo.search_mutual_funds(query)}
     return {"results": demo.search_mutual_funds(query)}
 
 

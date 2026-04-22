@@ -26,6 +26,7 @@ export default function Home() {
       .then((data) => {
         setMetadata(data);
         setConfig({
+          dataSource: "demo",
           universeId: data.universes[0]?.id ?? "nifty50-demo",
           customSymbols: [],
           startDate: "2020-01-01",
@@ -57,6 +58,28 @@ export default function Home() {
     }
   }
 
+  function handleConfigChange(next: BacktestRequest) {
+    const previousSource = config?.dataSource;
+    setConfig(next);
+
+    if (previousSource && next.dataSource !== previousSource) {
+      getMetadata(next.dataSource)
+        .then((data) => {
+          setMetadata(data);
+          setConfig((current) =>
+            current
+              ? {
+                  ...current,
+                  mutualFunds: [data.mutualFunds[0]?.schemeCode ?? current.mutualFunds[0]],
+                  benchmarks: [data.benchmarks[0]?.id ?? current.benchmarks[0]]
+                }
+              : current
+          );
+        })
+        .catch((loadError: Error) => setError(loadError.message));
+    }
+  }
+
   return (
     <main className="workspace">
       {metadata && config ? (
@@ -67,7 +90,7 @@ export default function Home() {
           mutualFunds={metadata.mutualFunds}
           config={config}
           isRunning={isRunning}
-          onChange={setConfig}
+          onChange={handleConfigChange}
           onRun={handleRun}
         />
       ) : (

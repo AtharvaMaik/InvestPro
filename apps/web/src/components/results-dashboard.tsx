@@ -3,7 +3,9 @@
 import { motion } from "framer-motion";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+import { InfoButton } from "@/components/info-button";
 import type { BacktestResponse, MetricSet } from "@/lib/api";
+import { glossary } from "@/lib/glossary";
 
 type Props = {
   result: BacktestResponse | null;
@@ -11,19 +13,19 @@ type Props = {
   error: string | null;
 };
 
-const percentMetrics: Array<[keyof MetricSet, string]> = [
-  ["cagr", "CAGR"],
-  ["total_return", "Total return"],
-  ["volatility", "Volatility"],
-  ["max_drawdown", "Max drawdown"],
-  ["annualTurnover", "Annual turnover"],
-  ["transactionCostDrag", "Cost drag"]
+const percentMetrics: Array<[keyof MetricSet, string, string]> = [
+  ["cagr", "CAGR", glossary.cagr],
+  ["total_return", "Total return", glossary.totalReturn],
+  ["volatility", "Volatility", glossary.volatility],
+  ["max_drawdown", "Max drawdown", glossary.maxDrawdown],
+  ["annualTurnover", "Annual turnover", glossary.turnover],
+  ["transactionCostDrag", "Cost drag", glossary.costDrag]
 ];
 
-const ratioMetrics: Array<[keyof MetricSet, string]> = [
-  ["sharpe", "Sharpe"],
-  ["sortino", "Sortino"],
-  ["calmar", "Calmar"]
+const ratioMetrics: Array<[keyof MetricSet, string, string]> = [
+  ["sharpe", "Sharpe", glossary.sharpe],
+  ["sortino", "Sortino", glossary.sortino],
+  ["calmar", "Calmar", glossary.calmar]
 ];
 
 export function ResultsDashboard({ result, isLoading, error }: Props) {
@@ -62,17 +64,17 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
   return (
     <motion.section className="results-grid" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
       <div className="metrics-grid">
-        {percentMetrics.map(([key, label]) => (
-          <MetricCard key={key} label={label} value={formatPercent(result.metrics.strategy[key])} />
+        {percentMetrics.map(([key, label, description]) => (
+          <MetricCard key={key} description={description} label={label} value={formatPercent(result.metrics.strategy[key])} />
         ))}
-        {ratioMetrics.map(([key, label]) => (
-          <MetricCard key={key} label={label} value={formatNumber(result.metrics.strategy[key])} />
+        {ratioMetrics.map(([key, label, description]) => (
+          <MetricCard key={key} description={description} label={label} value={formatNumber(result.metrics.strategy[key])} />
         ))}
       </div>
 
       <div className="chart-panel wide">
         <div className="panel-title">
-          <h2>Equity Curve</h2>
+          <h2 className="label-with-info">Equity Curve <InfoButton label="equity curve" description={glossary.equityCurve} /></h2>
           <span>{result.summary.tradingDays} trading days</span>
         </div>
         <ResponsiveContainer width="100%" height={320}>
@@ -90,7 +92,7 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
 
       <div className="chart-panel">
         <div className="panel-title">
-          <h2>Drawdown</h2>
+          <h2 className="label-with-info">Drawdown <InfoButton label="drawdown" description={glossary.drawdown} /></h2>
           <span>Peak-to-trough risk</span>
         </div>
         <ResponsiveContainer width="100%" height={260}>
@@ -106,7 +108,7 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
 
       <div className="chart-panel">
         <div className="panel-title">
-          <h2>Comparisons</h2>
+          <h2 className="label-with-info">Comparisons <InfoButton label="comparisons" description={glossary.comparisons} /></h2>
           <span>Funds and benchmark</span>
         </div>
         <div className="table-wrap">
@@ -135,7 +137,7 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
 
       <div className="chart-panel wide">
         <div className="panel-title">
-          <h2>Latest Holdings</h2>
+          <h2 className="label-with-info">Latest Holdings <InfoButton label="holdings" description={glossary.holdings} /></h2>
           <span>{latestHoldings.length} positions</span>
         </div>
         <div className="table-wrap">
@@ -173,10 +175,10 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: string }) {
+function MetricCard({ description, label, value }: { description: string; label: string; value: string }) {
   return (
     <article className="metric-card">
-      <span>{label}</span>
+      <span className="label-with-info">{label} <InfoButton label={label} description={description} /></span>
       <strong>{value}</strong>
     </article>
   );
