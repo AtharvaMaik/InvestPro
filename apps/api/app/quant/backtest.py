@@ -29,24 +29,27 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
     close = prices.pivot(index="date", columns="symbol", values="adjustedClose").sort_index()
     volume = prices.pivot(index="date", columns="symbol", values="volume").sort_index()
     returns = close.pct_change().fillna(0)
-    rebalance_dates = _monthly_rebalance_dates(close.index)
+    fundamentals = demo.fundamentals().set_index("symbol")
+    rebalance_dates = _rebalance_dates(close.index, request.rebalanceFrequency)
     weights = {factor.id: factor.weight for factor in request.factors}
 
     portfolio_returns = pd.Series(0.0, index=returns.index)
     holdings = []
+    diagnostics_samples: list[dict] = []
     current_weights = pd.Series(dtype=float)
     transaction_cost_rate = request.transactionCostBps / 10000
 
     for position, rebalance_date in enumerate(rebalance_dates):
         next_date = rebalance_dates[position + 1] if position + 1 < len(rebalance_dates) else returns.index[-1]
-        factor_scores = _factor_scores(close.loc[:rebalance_date], volume.loc[:rebalance_date], weights)
+        factor_scores = _factor_scores(close.loc[:rebalance_date], volume.loc[:rebalance_date], weights, fundamentals)
         ranked = composite_scores(factor_scores, weights)
+        diagnostics_samples.extend(_diagnostic_samples(factor_scores, close, rebalance_date, next_date))
         selected = ranked.head(min(request.topN, len(ranked)))
         if selected.empty:
             warnings.append(WarningMessage(code="NO_ELIGIBLE_STOCKS", message=f"No stocks were eligible on {rebalance_date.date()}."))
             continue
 
-        target_weights = pd.Series(1 / len(selected), index=selected.index)
+        target_weights = _target_weights(request.weightingMethod, selected, close.loc[:rebalance_date])
         turnover = _one_way_turnover(current_weights, target_weights)
         cost = turnover * transaction_cost_rate
         period_mask = (returns.index > rebalance_date) & (returns.index <= next_date)
@@ -80,6 +83,8 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
     comparisons = _comparison_results(request, portfolio_returns, warnings)
     equity_curve = _equity_curve(strategy_wealth, request, warnings)
     drawdowns = _drawdown_points(strategy_wealth, request, warnings)
+    factor_diagnostics = _factor_diagnostics(diagnostics_samples)
+    robustness = _robustness_snapshot(request, portfolio_returns, strategy_metrics)
 
     return BacktestResponse(
         id=f"bt_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
@@ -90,6 +95,8 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
             "endDate": str(strategy_wealth.index.max().date()),
             "tradingDays": int(len(strategy_wealth)),
             "rebalanceCount": int(len(rebalance_dates)),
+            "rebalanceFrequency": request.rebalanceFrequency,
+            "weightingMethod": request.weightingMethod,
         },
         metrics={"strategy": strategy_metrics},
         series={
@@ -100,6 +107,8 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
         },
         holdings=holdings,
         comparisons=comparisons,
+        factorDiagnostics=factor_diagnostics,
+        robustness=robustness,
         warnings=warnings,
     )
 
@@ -122,12 +131,18 @@ def _price_data(request: BacktestRequest, warnings: list[WarningMessage]) -> pd.
         return demo.price_data()
 
 
-def _monthly_rebalance_dates(index: pd.DatetimeIndex) -> list[pd.Timestamp]:
+def _rebalance_dates(index: pd.DatetimeIndex, frequency: str) -> list[pd.Timestamp]:
     series = pd.Series(index=index, data=index)
-    return list(series.resample("ME").last().dropna())
+    rule = "QE" if frequency == "quarterly" else "ME"
+    return list(series.resample(rule).last().dropna())
 
 
-def _factor_scores(close: pd.DataFrame, volume: pd.DataFrame, weights: dict[str, float]) -> dict[str, pd.Series]:
+def _factor_scores(
+    close: pd.DataFrame,
+    volume: pd.DataFrame,
+    weights: dict[str, float],
+    fundamentals: pd.DataFrame,
+) -> dict[str, pd.Series]:
     raw: dict[str, pd.Series] = {}
     for factor_id in weights:
         values = {}
@@ -143,6 +158,8 @@ def _factor_scores(close: pd.DataFrame, volume: pd.DataFrame, weights: dict[str,
                 value = trailing_volatility(price_series, 126)
             elif factor_id == "liquidity_3m":
                 value = average_traded_value(close[symbol], volume[symbol], 63)
+            elif factor_id in {"quality_score", "value_score"} and symbol in fundamentals.index:
+                value = fundamentals.loc[symbol, factor_id]
             else:
                 value = None
             if value is not None:
@@ -150,6 +167,110 @@ def _factor_scores(close: pd.DataFrame, volume: pd.DataFrame, weights: dict[str,
         factor_def = FACTOR_DEFS[factor_id]
         raw[factor_id] = zscore_factor(pd.Series(values), higher_is_better=factor_def["direction"] == "higher_is_better")
     return raw
+
+
+def _target_weights(weighting_method: str, selected: pd.Series, close: pd.DataFrame) -> pd.Series:
+    if weighting_method == "score":
+        raw = selected - selected.min() + 0.01
+        return raw / raw.sum()
+
+    if weighting_method == "volatility":
+        volatilities = close[selected.index].pct_change().tail(126).std(ddof=1).replace(0, pd.NA)
+        inverse_vol = (1 / volatilities).fillna(0)
+        if inverse_vol.sum() > 0:
+            return inverse_vol / inverse_vol.sum()
+
+    return pd.Series(1 / len(selected), index=selected.index)
+
+
+def _diagnostic_samples(
+    factor_scores: dict[str, pd.Series],
+    close: pd.DataFrame,
+    rebalance_date: pd.Timestamp,
+    next_date: pd.Timestamp,
+) -> list[dict]:
+    samples = []
+    if rebalance_date not in close.index or next_date not in close.index or rebalance_date == next_date:
+        return samples
+
+    forward_returns = (close.loc[next_date] / close.loc[rebalance_date]) - 1
+    for factor_id, scores in factor_scores.items():
+        aligned = pd.concat([scores.rename("score"), forward_returns.rename("forwardReturn")], axis=1).dropna()
+        if len(aligned) < 5:
+            continue
+        ranked = aligned.sort_values("score", ascending=False)
+        bucket_size = max(1, len(ranked) // 5)
+        top_return = float(ranked.head(bucket_size)["forwardReturn"].mean())
+        bottom_return = float(ranked.tail(bucket_size)["forwardReturn"].mean())
+        samples.append(
+            {
+                "factorId": factor_id,
+                "rebalanceDate": rebalance_date.date().isoformat(),
+                "topReturn": top_return,
+                "bottomReturn": bottom_return,
+                "spread": top_return - bottom_return,
+                "hit": top_return > bottom_return,
+            }
+        )
+    return samples
+
+
+def _factor_diagnostics(samples: list[dict]) -> list[dict]:
+    if not samples:
+        return []
+
+    frame = pd.DataFrame(samples)
+    diagnostics = []
+    for factor_id, group in frame.groupby("factorId"):
+        average_spread = float(group["spread"].mean())
+        hit_rate = float(group["hit"].mean())
+        if average_spread > 0.01 and hit_rate >= 0.55:
+            evidence = "strong"
+        elif average_spread > 0 and hit_rate >= 0.45:
+            evidence = "mixed"
+        else:
+            evidence = "weak"
+        diagnostics.append(
+            {
+                "factorId": factor_id,
+                "observations": int(len(group)),
+                "averageTopReturn": float(group["topReturn"].mean()),
+                "averageBottomReturn": float(group["bottomReturn"].mean()),
+                "averageSpread": average_spread,
+                "hitRate": hit_rate,
+                "evidence": evidence,
+            }
+        )
+    return sorted(diagnostics, key=lambda item: item["averageSpread"], reverse=True)
+
+
+def _robustness_snapshot(
+    request: BacktestRequest,
+    returns: pd.Series,
+    strategy_metrics: dict[str, float | None],
+) -> list[dict]:
+    base = {
+        "scenario": "Selected strategy",
+        "topN": request.topN,
+        "transactionCostBps": request.transactionCostBps,
+        "rebalanceFrequency": request.rebalanceFrequency,
+        "cagr": strategy_metrics.get("cagr"),
+        "maxDrawdown": strategy_metrics.get("max_drawdown"),
+    }
+    higher_cost = returns.copy()
+    higher_cost.iloc[::21] = higher_cost.iloc[::21] - 0.0025
+    higher_cost_metrics = calculate_metrics(higher_cost).to_dict()
+    return [
+        base,
+        {
+            "scenario": "+25 bps cost stress",
+            "topN": request.topN,
+            "transactionCostBps": request.transactionCostBps + 25,
+            "rebalanceFrequency": request.rebalanceFrequency,
+            "cagr": higher_cost_metrics.get("cagr"),
+            "maxDrawdown": higher_cost_metrics.get("max_drawdown"),
+        },
+    ]
 
 
 def _one_way_turnover(current: pd.Series, target: pd.Series) -> float:

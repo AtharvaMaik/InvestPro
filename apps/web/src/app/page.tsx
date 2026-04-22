@@ -32,6 +32,7 @@ export default function Home() {
           startDate: "2020-01-01",
           endDate: "2024-12-31",
           rebalanceFrequency: "monthly",
+          weightingMethod: "equal",
           topN: 5,
           transactionCostBps: 25,
           factors: data.factors.map((factor, index) => ({

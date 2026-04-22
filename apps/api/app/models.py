@@ -17,7 +17,8 @@ class BacktestRequest(BaseModel):
     customSymbols: list[str] = Field(default_factory=list)
     startDate: date
     endDate: date
-    rebalanceFrequency: Literal["monthly"] = "monthly"
+    rebalanceFrequency: Literal["monthly", "quarterly"] = "monthly"
+    weightingMethod: Literal["equal", "score", "volatility"] = "equal"
     topN: int = Field(ge=1, le=50)
     transactionCostBps: float = Field(ge=0, le=200)
     factors: list[FactorSelection]
@@ -62,4 +63,6 @@ class BacktestResponse(BaseModel):
     series: dict
     holdings: list[dict]
     comparisons: list[ComparisonResult]
+    factorDiagnostics: list[dict] = Field(default_factory=list)
+    robustness: list[dict] = Field(default_factory=list)
     warnings: list[WarningMessage]

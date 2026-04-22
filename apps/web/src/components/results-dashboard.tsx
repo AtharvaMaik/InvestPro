@@ -60,6 +60,7 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
   }
 
   const latestHoldings = result.holdings.at(-1)?.symbols ?? [];
+  const mutualFundKey = result.comparisons.find((item) => item.type === "mutual_fund")?.id;
 
   return (
     <motion.section className="results-grid" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
@@ -85,7 +86,7 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
             <Tooltip formatter={(value) => Number(value).toFixed(3)} />
             <Line type="monotone" dataKey="strategy" stroke="#0f766e" strokeWidth={3} dot={false} />
             <Line type="monotone" dataKey="nifty50-demo" stroke="#64748b" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey={result.comparisons.find((item) => item.type === "mutual_fund")?.id ?? ""} stroke="#7c3aed" strokeWidth={2} dot={false} />
+            {mutualFundKey ? <Line type="monotone" dataKey={mutualFundKey} stroke="#7c3aed" strokeWidth={2} dot={false} /> : null}
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -164,10 +165,76 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
         </div>
       </div>
 
+      <div className="chart-panel wide">
+        <div className="panel-title">
+          <h2 className="label-with-info">Factor Diagnostics <InfoButton label="factor diagnostics" description={glossary.factorDiagnostics} /></h2>
+          <span>Top bucket vs bottom bucket</span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Factor</th>
+                <th>Spread</th>
+                <th>Hit rate</th>
+                <th>Top avg</th>
+                <th>Bottom avg</th>
+                <th>Evidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.factorDiagnostics.map((diagnostic) => (
+                <tr key={diagnostic.factorId}>
+                  <td>{formatFactorName(diagnostic.factorId)}</td>
+                  <td>{formatPercent(diagnostic.averageSpread)}</td>
+                  <td>{formatPercent(diagnostic.hitRate)}</td>
+                  <td>{formatPercent(diagnostic.averageTopReturn)}</td>
+                  <td>{formatPercent(diagnostic.averageBottomReturn)}</td>
+                  <td><span className={`evidence-pill ${diagnostic.evidence}`}>{diagnostic.evidence}</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="chart-panel wide">
+        <div className="panel-title">
+          <h2 className="label-with-info">Robustness Check <InfoButton label="robustness" description={glossary.robustness} /></h2>
+          <span>Assumption stress</span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th>Top N</th>
+                <th>Cost</th>
+                <th>Rebalance</th>
+                <th>CAGR</th>
+                <th>Max DD</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.robustness.map((scenario) => (
+                <tr key={scenario.scenario}>
+                  <td>{scenario.scenario}</td>
+                  <td>{scenario.topN}</td>
+                  <td>{scenario.transactionCostBps} bps</td>
+                  <td>{scenario.rebalanceFrequency}</td>
+                  <td>{formatPercent(scenario.cagr)}</td>
+                  <td>{formatPercent(scenario.maxDrawdown)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {result.warnings.length ? (
         <div className="warnings">
-          {result.warnings.map((warning) => (
-            <p key={warning.code}>{warning.message}</p>
+          {result.warnings.map((warning, index) => (
+            <p key={`${warning.code}-${index}`}>{warning.message}</p>
           ))}
         </div>
       ) : null}
@@ -192,4 +259,11 @@ function formatPercent(value: number | null | undefined) {
 function formatNumber(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) return "n/a";
   return value.toFixed(2);
+}
+
+function formatFactorName(value: string) {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

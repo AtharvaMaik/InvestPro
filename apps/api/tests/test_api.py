@@ -62,6 +62,42 @@ def test_backtest_default_config_returns_series_and_comparisons():
     assert body["series"]["equityCurve"]
     assert body["comparisons"]
     assert body["holdings"]
+    assert body["factorDiagnostics"]
+    assert body["robustness"]
+
+
+def test_backtest_supports_quarterly_score_weighting_and_fundamental_factors():
+    payload = {
+        "universeId": "nifty50-demo",
+        "customSymbols": [],
+        "startDate": "2020-01-01",
+        "endDate": "2024-12-31",
+        "rebalanceFrequency": "quarterly",
+        "weightingMethod": "score",
+        "topN": 5,
+        "transactionCostBps": 25,
+        "factors": [
+            {"id": "quality_score", "weight": 0.5},
+            {"id": "value_score", "weight": 0.5},
+        ],
+        "benchmarks": ["nifty50-demo"],
+        "mutualFunds": ["ppfas-flexi-demo"],
+    }
+    response = client.post("/backtests", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "completed"
+    assert body["summary"]["rebalanceFrequency"] == "quarterly"
+    assert body["summary"]["weightingMethod"] == "score"
+    assert len(body["holdings"]) < 30
+    assert all("evidence" in diagnostic for diagnostic in body["factorDiagnostics"])
+
+
+def test_factor_metadata_includes_fundamental_factors():
+    response = client.get("/factors")
+    assert response.status_code == 200
+    factor_ids = {factor["id"] for factor in response.json()["factors"]}
+    assert {"quality_score", "value_score"}.issubset(factor_ids)
 
 
 def test_backtest_live_source_falls_back_to_demo_when_provider_fails(monkeypatch):

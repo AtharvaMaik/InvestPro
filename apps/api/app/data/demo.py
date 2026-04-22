@@ -70,6 +70,22 @@ FACTORS = [
         "lookbackDays": 63,
         "description": "Three-month average traded value",
     },
+    {
+        "id": "quality_score",
+        "name": "Quality Score",
+        "category": "Fundamental",
+        "direction": "higher_is_better",
+        "lookbackDays": 0,
+        "description": "Composite demo quality factor using profitability and balance-sheet strength",
+    },
+    {
+        "id": "value_score",
+        "name": "Value Score",
+        "category": "Fundamental",
+        "direction": "higher_is_better",
+        "lookbackDays": 0,
+        "description": "Composite demo value factor using valuation yield proxies",
+    },
 ]
 
 BENCHMARKS = [
@@ -143,3 +159,16 @@ def search_mutual_funds(query: str | None) -> list[dict]:
         return MUTUAL_FUNDS
     lowered = query.lower()
     return [fund for fund in MUTUAL_FUNDS if lowered in fund["schemeName"].lower()]
+
+
+def fundamentals() -> pd.DataFrame:
+    rows = []
+    for index, symbol in enumerate(SYMBOLS):
+        rows.append(
+            {
+                "symbol": symbol,
+                "quality_score": 55 + ((index * 11) % 40),
+                "value_score": 45 + ((index * 7) % 42),
+            }
+        )
+    return pd.DataFrame(rows)

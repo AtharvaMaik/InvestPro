@@ -82,6 +82,33 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
 
       <label className="field">
         <span className="label-with-info">
+          Rebalance <InfoButton label="rebalance frequency" description={glossary.rebalanceFrequency} />
+        </span>
+        <select
+          value={config.rebalanceFrequency}
+          onChange={(event) => update({ rebalanceFrequency: event.target.value as "monthly" | "quarterly" })}
+        >
+          <option value="monthly">Monthly</option>
+          <option value="quarterly">Quarterly</option>
+        </select>
+      </label>
+
+      <label className="field">
+        <span className="label-with-info">
+          Weighting <InfoButton label="weighting method" description={glossary.weightingMethod} />
+        </span>
+        <select
+          value={config.weightingMethod}
+          onChange={(event) => update({ weightingMethod: event.target.value as "equal" | "score" | "volatility" })}
+        >
+          <option value="equal">Equal weight</option>
+          <option value="score">Score weighted</option>
+          <option value="volatility">Volatility scaled</option>
+        </select>
+      </label>
+
+      <label className="field">
+        <span className="label-with-info">
           Transaction cost: {config.transactionCostBps} bps <InfoButton label="transaction cost" description={glossary.transactionCost} />
         </span>
         <input

@@ -316,7 +316,16 @@ V1 factor ID:
 
 Higher is better. Stocks with extremely low liquidity can also be removed by a universe-level minimum threshold.
 
-### 4.7 Winsorization
+### 4.7 Demo Fundamental Factors
+
+V1 includes deterministic demo-only fundamental factors so the product can model quality and value workflows before live fundamentals are integrated:
+
+- `quality_score`: higher is better and represents profitability and balance-sheet quality proxies.
+- `value_score`: higher is better and represents valuation yield proxies.
+
+Live fundamental data is a later provider integration. Until then, these factors are useful for UI, ranking, and diagnostics validation, but should not be treated as real company fundamentals.
+
+### 4.8 Winsorization
 
 For a factor on rebalance date `t`, across all eligible stocks:
 
@@ -326,7 +335,7 @@ WinsorizedValue_i = min(max(raw_i, percentile_5), percentile_95)
 
 This reduces the impact of extreme data points.
 
-### 4.8 Z-Score Normalization
+### 4.9 Z-Score Normalization
 
 For each factor on each rebalance date:
 
@@ -348,7 +357,7 @@ score_i = z_i
 
 If standard deviation is zero, every stock receives score `0` for that factor and a warning is added.
 
-### 4.9 Composite Score
+### 4.10 Composite Score
 
 Let normalized factor weights sum to 1:
 
@@ -372,11 +381,13 @@ At each rebalance date:
 2. Remove stocks with insufficient factor history.
 3. Rank eligible stocks by composite score.
 4. Select the top `N` stocks.
-5. Assign equal target weight:
+5. Assign target weights according to the selected weighting method:
 
 ```text
 TargetWeight_i = 1 / N
 ```
+
+Equal weighting uses the formula above. Score weighting tilts toward higher composite scores. Volatility weighting tilts toward lower trailing volatility names.
 
 6. Apply transaction cost based on turnover from the previous holdings.
 7. Hold the selected portfolio until the next rebalance date.
@@ -391,7 +402,7 @@ The backend builds a shared trading calendar from the union of available price d
 
 ### 6.2 Rebalance Dates
 
-For `monthly` frequency, the rebalance date is the last available trading date of each calendar month in the selected date range.
+For `monthly` frequency, the rebalance date is the last available trading date of each calendar month in the selected date range. For `quarterly` frequency, the rebalance date is the last available trading date of each calendar quarter.
 
 ### 6.3 Portfolio Period Return
 

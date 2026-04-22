@@ -6,9 +6,11 @@ The current vertical slice includes:
 
 - FastAPI quant backend.
 - Deterministic demo market data.
-- Factor ranking for momentum, volatility, and liquidity.
-- Monthly long-only equal-weight backtesting.
+- Factor ranking for momentum, volatility, liquidity, demo quality, and demo value.
+- Monthly or quarterly long-only backtesting.
+- Equal, score-weighted, or volatility-scaled portfolio weighting.
 - Performance, drawdown, turnover, and comparison metrics.
+- Factor diagnostics and a basic robustness stress check.
 - Next.js dashboard with strategy controls, charts, tables, warnings, and responsive styling.
 - Info buttons that explain finance terms in plain language.
 - Optional live data mode using Yahoo Finance-compatible NSE symbols and MFAPI mutual fund NAVs.
@@ -92,8 +94,7 @@ If a live provider fails, the backend returns a warning and falls back to demo d
 ## Current Limitations
 
 - Live price data depends on provider availability and is not yet cached locally.
-- Price-based factors only.
-- Monthly rebalance only.
-- Equal-weight portfolio only.
+- Live fundamental data is not integrated yet; quality and value are deterministic demo factors.
+- Robustness currently includes an initial transaction-cost stress check, not a full parameter sweep.
 - No authentication or saved user accounts yet.
 - No personalized investment advice.

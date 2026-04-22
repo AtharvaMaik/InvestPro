@@ -36,7 +36,8 @@ export type BacktestRequest = {
   customSymbols: string[];
   startDate: string;
   endDate: string;
-  rebalanceFrequency: "monthly";
+  rebalanceFrequency: "monthly" | "quarterly";
+  weightingMethod: "equal" | "score" | "volatility";
   topN: number;
   transactionCostBps: number;
   factors: { id: string; weight: number }[];
@@ -72,6 +73,23 @@ export type BacktestResponse = {
     type: "benchmark" | "mutual_fund";
     metrics: MetricSet;
     monthlyWinRate: number | null;
+  }>;
+  factorDiagnostics: Array<{
+    factorId: string;
+    observations: number;
+    averageTopReturn: number;
+    averageBottomReturn: number;
+    averageSpread: number;
+    hitRate: number;
+    evidence: "strong" | "mixed" | "weak";
+  }>;
+  robustness: Array<{
+    scenario: string;
+    topN: number;
+    transactionCostBps: number;
+    rebalanceFrequency: string;
+    cagr: number | null;
+    maxDrawdown: number | null;
   }>;
   holdings: Array<{
     rebalanceDate: string;
