@@ -11,20 +11,30 @@ type Props = {
   benchmarks: Benchmark[];
   mutualFunds: MutualFund[];
   config: BacktestRequest;
+  activePresetId: string | null;
   isRunning: boolean;
   onChange: (config: BacktestRequest) => void;
+  onPresetChange: (presetId: string) => void;
   onRun: () => void;
 };
 
-export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, config, isRunning, onChange, onRun }: Props) {
+export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, config, activePresetId, isRunning, onChange, onPresetChange, onRun }: Props) {
   const update = (patch: Partial<BacktestRequest>) => onChange({ ...config, ...patch });
   const activeWeight = config.factors.reduce((sum, factor) => sum + Math.abs(factor.weight), 0);
   const invalid = activeWeight === 0 || config.startDate >= config.endDate;
+  const activeFactors = config.factors.filter((factor) => factor.weight > 0);
 
   function setFactorWeight(id: string, weight: number) {
     update({
       factors: config.factors.map((factor) => (factor.id === id ? { ...factor, weight } : factor))
     });
+  }
+
+  function handlePreset(presetId: string) {
+    const preset = strategyPresets.find((entry) => entry.id === presetId);
+    if (!preset) return;
+    onPresetChange(presetId);
+    onChange(applyPreset(config, preset));
   }
 
   return (
@@ -39,11 +49,17 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
 
       <div className="preset-grid" aria-label="Strategy presets">
         {strategyPresets.map((preset) => (
-          <button key={preset.id} type="button" onClick={() => onChange(applyPreset(config, preset))}>
+          <button key={preset.id} className={activePresetId === preset.id ? "active" : ""} type="button" onClick={() => handlePreset(preset.id)}>
             <strong>{preset.name}</strong>
             <span>{preset.risk}</span>
             <p>{preset.description}</p>
           </button>
+        ))}
+      </div>
+
+      <div className="weight-chips" aria-label="Applied factor weights">
+        {activeFactors.map((factor) => (
+          <span key={factor.id}>{formatFactorName(factor.id)} {factor.weight.toFixed(2)}</span>
         ))}
       </div>
 
@@ -199,7 +215,7 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
         {factors.map((factor) => {
           const selected = config.factors.find((entry) => entry.id === factor.id);
           return (
-            <label className="factor-row" key={factor.id}>
+            <label className={`factor-row ${(selected?.weight ?? 0) > 0 ? "active" : ""}`} key={factor.id}>
               <div>
                 <strong>{factor.name}</strong>
                 <span>{factor.category} - {factor.direction === "higher_is_better" ? "higher better" : "lower better"}</span>
@@ -250,4 +266,11 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
       {invalid ? <p className="inline-error">Use a valid date range and at least one non-zero factor.</p> : null}
     </aside>
   );
+}
+
+function formatFactorName(value: string) {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }

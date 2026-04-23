@@ -62,6 +62,7 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
   const latestHoldings = result.holdings.at(-1)?.symbols ?? [];
   const mutualFundKey = result.comparisons.find((item) => item.type === "mutual_fund")?.id;
   const latestJournal = result.rebalanceJournal.at(-1);
+  const finalSummary = buildFinalSummary(result);
 
   return (
     <motion.section className="results-grid" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
@@ -75,6 +76,19 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
             <p key={reason}>{reason}</p>
           ))}
         </div>
+      </div>
+
+      <div className="final-summary-panel">
+        <div>
+          <span className="eyebrow">Final Summary</span>
+          <h2>{finalSummary.headline}</h2>
+          <p>{finalSummary.body}</p>
+        </div>
+        <ol>
+          {finalSummary.steps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
       </div>
 
       <div className="metrics-grid">
@@ -505,4 +519,32 @@ function formatAction(value: "buy_candidate" | "hold" | "review" | "avoid") {
   if (value === "hold") return "Hold";
   if (value === "avoid") return "Avoid";
   return "Review";
+}
+
+function buildFinalSummary(result: BacktestResponse) {
+  const buyCandidates = result.actionList.filter((item) => item.action === "buy_candidate");
+  const reviewItems = result.actionList.filter((item) => item.action === "review" || item.action === "avoid");
+  const verdict = result.researchVerdict.status;
+  const topNames = buyCandidates.slice(0, 3).map((item) => item.symbol).join(", ");
+  const headline =
+    verdict === "pass"
+      ? "This strategy is ready for deeper research."
+      : verdict === "watch"
+        ? "This strategy is promising, but needs review before action."
+        : "This strategy should not be used without major changes.";
+  const body =
+    buyCandidates.length > 0
+      ? `The strongest current research candidates are ${topNames}. Treat these as a shortlist, not automatic orders.`
+      : "The current run did not produce strong buy candidates. Focus on the guardrails and review notes before considering any allocation.";
+  const steps = [
+    "Read the Research Verdict and confirm the data confidence is not low.",
+    "Review every Buy Candidate against company news, valuation context, and your own risk profile.",
+    "Check Review or Avoid names first; they explain where the model is uncomfortable.",
+    "Compare the result against the relevant mutual fund category, not only the index.",
+    "Paper trade or use a small satellite allocation before scaling capital.",
+  ];
+  if (reviewItems.length > 0) {
+    steps.splice(2, 0, `${reviewItems.length} selected names need caution based on trend, drawdown, liquidity, or weak composite evidence.`);
+  }
+  return { headline, body, steps };
 }

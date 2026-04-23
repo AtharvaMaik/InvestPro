@@ -21,6 +21,7 @@ export default function Home() {
   const [result, setResult] = useState<BacktestResponse | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activePresetId, setActivePresetId] = useState<string | null>("balanced-compounder");
 
   useEffect(() => {
     getMetadata()
@@ -109,8 +110,10 @@ export default function Home() {
           benchmarks={metadata.benchmarks}
           mutualFunds={metadata.mutualFunds}
           config={config}
+          activePresetId={activePresetId}
           isRunning={isRunning}
           onChange={handleConfigChange}
+          onPresetChange={setActivePresetId}
           onRun={handleRun}
         />
       ) : (
