@@ -40,6 +40,9 @@ export type BacktestRequest = {
   weightingMethod: "equal" | "score" | "volatility";
   topN: number;
   transactionCostBps: number;
+  trendFilter: boolean;
+  sectorNeutral: boolean;
+  maxSectorWeight: number;
   factors: { id: string; weight: number }[];
   benchmarks: string[];
   mutualFunds: string[];
@@ -65,12 +68,18 @@ export type BacktestResponse = {
   series: {
     equityCurve: Array<Record<string, string | number>>;
     drawdown: Array<Record<string, string | number>>;
+    rollingReturns: {
+      oneYear: Array<Record<string, string | number>>;
+      threeYear: Array<Record<string, string | number>>;
+      fiveYear: Array<Record<string, string | number>>;
+    };
     monthlyReturns: Array<Record<string, string | number>>;
   };
   comparisons: Array<{
     id: string;
     name: string;
     type: "benchmark" | "mutual_fund";
+    category: string | null;
     metrics: MetricSet;
     monthlyWinRate: number | null;
   }>;
@@ -91,11 +100,37 @@ export type BacktestResponse = {
     cagr: number | null;
     maxDrawdown: number | null;
   }>;
+  sectorExposure: Array<{
+    sector: string;
+    weight: number;
+    positions: number;
+  }>;
+  fundCategoryComparison: Array<{
+    category: string;
+    fundCount: number;
+    averageCagr: number | null;
+    averageSharpe: number | null;
+    averageMaxDrawdown: number | null;
+    averageMonthlyWinRate: number | null;
+  }>;
+  rollingAnalysis: {
+    positiveMonthRate?: number | null;
+    oneYearAverageReturn?: number | null;
+    oneYearWinRate?: number | null;
+  };
+  walkForward: {
+    status?: string;
+    method?: string;
+    train?: { startDate: string; endDate: string; metrics: MetricSet };
+    test?: { startDate: string; endDate: string; metrics: MetricSet };
+    degradation?: { cagr: number | null; maxDrawdown: number | null };
+  };
   holdings: Array<{
     rebalanceDate: string;
     turnover: number;
     symbols: Array<{
       symbol: string;
+      sector?: string;
       weight: number;
       compositeScore: number;
       factorScores: Record<string, number>;

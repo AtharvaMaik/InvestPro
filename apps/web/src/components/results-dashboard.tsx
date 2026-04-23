@@ -136,6 +136,125 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
         </div>
       </div>
 
+      <div className="chart-panel">
+        <div className="panel-title">
+          <h2 className="label-with-info">Fund Categories <InfoButton label="fund categories" description={glossary.fundCategories} /></h2>
+          <span>{result.fundCategoryComparison.length} groups</span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Funds</th>
+                <th>Avg CAGR</th>
+                <th>Avg Sharpe</th>
+                <th>Avg Max DD</th>
+                <th>Win rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.fundCategoryComparison.map((category) => (
+                <tr key={category.category}>
+                  <td>{category.category}</td>
+                  <td>{category.fundCount}</td>
+                  <td>{formatPercent(category.averageCagr)}</td>
+                  <td>{formatNumber(category.averageSharpe)}</td>
+                  <td>{formatPercent(category.averageMaxDrawdown)}</td>
+                  <td>{formatPercent(category.averageMonthlyWinRate)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="chart-panel">
+        <div className="panel-title">
+          <h2 className="label-with-info">Sector Exposure <InfoButton label="sector exposure" description={glossary.sectorExposure} /></h2>
+          <span>Latest rebalance</span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Sector</th>
+                <th>Weight</th>
+                <th>Positions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.sectorExposure.map((sector) => (
+                <tr key={sector.sector}>
+                  <td>{sector.sector}</td>
+                  <td>{formatPercent(sector.weight)}</td>
+                  <td>{sector.positions}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="chart-panel">
+        <div className="panel-title">
+          <h2 className="label-with-info">Rolling Edge <InfoButton label="rolling analysis" description={glossary.rollingAnalysis} /></h2>
+          <span>{result.series.rollingReturns.oneYear.length} one-year points</span>
+        </div>
+        <div className="mini-metrics">
+          <div><span>Positive months</span><strong>{formatPercent(result.rollingAnalysis.positiveMonthRate)}</strong></div>
+          <div><span>Avg 1Y return</span><strong>{formatPercent(result.rollingAnalysis.oneYearAverageReturn)}</strong></div>
+          <div><span>Best fund win rate</span><strong>{formatPercent(result.rollingAnalysis.oneYearWinRate)}</strong></div>
+        </div>
+      </div>
+
+      <div className="chart-panel">
+        <div className="panel-title">
+          <h2 className="label-with-info">Walk-Forward <InfoButton label="walk-forward" description={glossary.walkForward} /></h2>
+          <span>{result.walkForward.status ?? "n/a"}</span>
+        </div>
+        {result.walkForward.train && result.walkForward.test ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Period</th>
+                  <th>Dates</th>
+                  <th>CAGR</th>
+                  <th>Sharpe</th>
+                  <th>Max DD</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Train</td>
+                  <td>{result.walkForward.train.startDate} to {result.walkForward.train.endDate}</td>
+                  <td>{formatPercent(result.walkForward.train.metrics.cagr)}</td>
+                  <td>{formatNumber(result.walkForward.train.metrics.sharpe)}</td>
+                  <td>{formatPercent(result.walkForward.train.metrics.max_drawdown)}</td>
+                </tr>
+                <tr>
+                  <td>Test</td>
+                  <td>{result.walkForward.test.startDate} to {result.walkForward.test.endDate}</td>
+                  <td>{formatPercent(result.walkForward.test.metrics.cagr)}</td>
+                  <td>{formatNumber(result.walkForward.test.metrics.sharpe)}</td>
+                  <td>{formatPercent(result.walkForward.test.metrics.max_drawdown)}</td>
+                </tr>
+                <tr>
+                  <td>Change</td>
+                  <td>Out-of-sample minus train</td>
+                  <td>{formatPercent(result.walkForward.degradation?.cagr)}</td>
+                  <td>n/a</td>
+                  <td>{formatPercent(result.walkForward.degradation?.maxDrawdown)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p>Not enough history for a walk-forward split.</p>
+        )}
+      </div>
+
       <div className="chart-panel wide">
         <div className="panel-title">
           <h2 className="label-with-info">Latest Holdings <InfoButton label="holdings" description={glossary.holdings} /></h2>
@@ -146,6 +265,7 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
             <thead>
               <tr>
                 <th>Symbol</th>
+                <th>Sector</th>
                 <th>Weight</th>
                 <th>Composite</th>
                 <th>Momentum 6M</th>
@@ -155,6 +275,7 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
               {latestHoldings.map((holding) => (
                 <tr key={holding.symbol}>
                   <td>{holding.symbol}</td>
+                  <td>{holding.sector ?? "Unknown"}</td>
                   <td>{formatPercent(holding.weight)}</td>
                   <td>{formatNumber(holding.compositeScore)}</td>
                   <td>{formatNumber(holding.factorScores.momentum_6m)}</td>

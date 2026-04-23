@@ -6,6 +6,12 @@ export const glossary = {
   topN: "The number of highest-ranked stocks the strategy holds after each monthly rebalance.",
   transactionCost:
     "Estimated trading cost in basis points. 25 bps means 0.25% cost applied to portfolio turnover at rebalance.",
+  trendFilter:
+    "Requires a stock to trade at or above its 200-day moving average before it can enter the portfolio.",
+  sectorNeutral:
+    "Limits how much of the portfolio can come from one sector so the strategy does not accidentally become all banks, IT, or metals.",
+  maxSectorWeight:
+    "The maximum portfolio weight allowed in one sector when the sector cap is enabled.",
   rebalanceFrequency:
     "How often the portfolio is rebuilt. Monthly reacts faster; quarterly usually lowers turnover and trading friction.",
   weightingMethod:
@@ -26,6 +32,12 @@ export const glossary = {
   equityCurve: "Growth of one rupee invested in the strategy and comparison assets.",
   drawdown: "How far each series fell from its previous high at every point in time.",
   comparisons: "Side-by-side return and risk view against benchmark and mutual fund alternatives.",
+  fundCategories: "Groups selected mutual funds by category, then averages return, risk, and win-rate metrics for each category.",
+  sectorExposure: "Shows the latest portfolio weight and position count by sector after the sector cap is applied.",
+  rollingAnalysis:
+    "Checks consistency through time instead of relying only on one full-period result.",
+  walkForward:
+    "Splits history into train and later test windows to show whether the same submitted strategy survives out of sample.",
   holdings: "The latest stocks selected by the factor model, including weights and factor scores."
   ,
   factorDiagnostics:

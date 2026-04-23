@@ -159,6 +159,34 @@ def mutual_fund_navs(scheme_codes: list[str]) -> dict[str, pd.Series]:
     return funds
 
 
+def fundamentals(symbols: list[str]) -> pd.DataFrame:
+    import yfinance as yf
+
+    rows = []
+    for symbol in symbols:
+        try:
+            info = yf.Ticker(symbol).get_info()
+        except Exception:
+            info = {}
+        if not info:
+            rows.append({"symbol": symbol, "sector": "Unknown"})
+            continue
+
+        rows.append(
+            {
+                "symbol": symbol,
+                "sector": info.get("sector") or "Unknown",
+                "roe": _float_or_none(info.get("returnOnEquity")),
+                "roce": _float_or_none(info.get("returnOnCapital")),
+                "debt_to_equity": _normalize_debt_to_equity(info.get("debtToEquity")),
+                "earnings_growth": _float_or_none(info.get("earningsGrowth") or info.get("earningsQuarterlyGrowth")),
+                "pe_ratio": _float_or_none(info.get("trailingPE") or info.get("forwardPE")),
+                "pb_ratio": _float_or_none(info.get("priceToBook")),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def search_mutual_funds(query: str | None) -> list[dict]:
     if not query:
         return CURATED_MUTUAL_FUNDS
@@ -208,4 +236,24 @@ def _infer_category(name: str) -> str:
         return "Mid Cap"
     if "small" in lowered:
         return "Small Cap"
+    if "elss" in lowered or "tax" in lowered:
+        return "ELSS"
+    if "index" in lowered or "nifty" in lowered or "sensex" in lowered:
+        return "Index"
     return "Mutual Fund"
+
+
+def _float_or_none(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _normalize_debt_to_equity(value: object) -> float | None:
+    parsed = _float_or_none(value)
+    if parsed is None:
+        return None
+    return parsed / 100 if parsed > 10 else parsed

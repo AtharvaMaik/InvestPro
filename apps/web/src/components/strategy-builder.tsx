@@ -121,6 +121,35 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
         />
       </label>
 
+      <div className="control-stack">
+        <label className="toggle-row">
+          <input type="checkbox" checked={config.trendFilter} onChange={(event) => update({ trendFilter: event.target.checked })} />
+          <span className="label-with-info">
+            200D trend filter <InfoButton label="trend filter" description={glossary.trendFilter} />
+          </span>
+        </label>
+        <label className="toggle-row">
+          <input type="checkbox" checked={config.sectorNeutral} onChange={(event) => update({ sectorNeutral: event.target.checked })} />
+          <span className="label-with-info">
+            Sector cap <InfoButton label="sector cap" description={glossary.sectorNeutral} />
+          </span>
+        </label>
+        <label className="field compact-field">
+          <span className="label-with-info">
+            Max sector weight: {(config.maxSectorWeight * 100).toFixed(0)}% <InfoButton label="max sector weight" description={glossary.maxSectorWeight} />
+          </span>
+          <input
+            type="range"
+            min="0.15"
+            max="0.6"
+            step="0.05"
+            value={config.maxSectorWeight}
+            disabled={!config.sectorNeutral}
+            onChange={(event) => update({ maxSectorWeight: Number(event.target.value) })}
+          />
+        </label>
+      </div>
+
       <div className="factor-list">
         <div className="section-label label-with-info">
           Factors <InfoButton label="factors" description={glossary.factors} />

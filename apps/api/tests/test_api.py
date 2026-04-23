@@ -104,11 +104,50 @@ def test_backtest_supports_quarterly_score_weighting_and_fundamental_factors():
     assert all("evidence" in diagnostic for diagnostic in body["factorDiagnostics"])
 
 
+def test_backtest_quant_v2_outputs_risk_fundamental_and_validation_sections():
+    payload = {
+        "universeId": "nifty50-demo",
+        "customSymbols": [],
+        "startDate": "2020-01-01",
+        "endDate": "2024-12-31",
+        "rebalanceFrequency": "quarterly",
+        "weightingMethod": "equal",
+        "topN": 15,
+        "transactionCostBps": 25,
+        "trendFilter": True,
+        "sectorNeutral": True,
+        "maxSectorWeight": 0.3,
+        "factors": [
+            {"id": "momentum_6m", "weight": 0.2},
+            {"id": "relative_momentum_6m", "weight": 0.2},
+            {"id": "drawdown_6m", "weight": 0.15},
+            {"id": "trend_200d", "weight": 0.1},
+            {"id": "roe", "weight": 0.15},
+            {"id": "debt_to_equity", "weight": 0.1},
+            {"id": "pe_ratio", "weight": 0.1},
+        ],
+        "benchmarks": ["nifty50-demo"],
+        "mutualFunds": ["ppfas-flexi-demo", "mirae-large-demo", "motilal-midcap-demo", "hdfc-elss-demo"],
+    }
+    response = client.post("/backtests", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["sectorExposure"]
+    assert all(item["weight"] <= 0.3001 for item in body["sectorExposure"])
+    assert body["fundCategoryComparison"]
+    assert {"Flexi Cap", "Large Cap", "Mid Cap", "ELSS"}.issubset({item["category"] for item in body["fundCategoryComparison"]})
+    assert body["series"]["rollingReturns"]["oneYear"]
+    assert body["rollingAnalysis"]["oneYearWinRate"] is not None
+    assert body["walkForward"]["train"]["metrics"]["cagr"] is not None
+    assert body["walkForward"]["test"]["metrics"]["cagr"] is not None
+
+
 def test_factor_metadata_includes_fundamental_factors():
     response = client.get("/factors")
     assert response.status_code == 200
     factor_ids = {factor["id"] for factor in response.json()["factors"]}
-    assert {"quality_score", "value_score"}.issubset(factor_ids)
+    assert {"quality_score", "value_score", "roe", "roce", "debt_to_equity", "earnings_growth", "pe_ratio", "pb_ratio"}.issubset(factor_ids)
 
 
 def test_backtest_live_source_falls_back_to_demo_when_provider_fails(monkeypatch):

@@ -373,6 +373,51 @@ Tie-breakers:
 2. Higher liquidity score.
 3. Alphabetical symbol order for deterministic output.
 
+### 4.11 Quant V2 Fundamental Factors
+
+Quant V2 adds real fundamental factor fields in live mode when Yahoo Finance exposes them, and deterministic seeded values in demo mode:
+
+- `roe`: return on equity. Higher is better.
+- `roce`: return on capital employed. Higher is better when available.
+- `debt_to_equity`: debt divided by equity. Lower is better.
+- `earnings_growth`: trailing earnings growth proxy. Higher is better.
+- `pe_ratio`: price divided by earnings. Lower is better.
+- `pb_ratio`: price divided by book value. Lower is better.
+
+Missing live fundamental values are skipped for that stock and factor. If live fundamentals are sparse or fail, the response includes a warning so the user knows whether the run used complete real fundamentals or fallback data.
+
+### 4.12 Benchmark-Relative Momentum
+
+Relative momentum rewards stocks outperforming the benchmark, not merely stocks that rose in an up-market:
+
+```text
+RelativeMomentum_6M_i = Momentum_6M_i - Momentum_6M_benchmark
+```
+
+Higher is better.
+
+### 4.13 Trend Filter
+
+The optional trend filter requires:
+
+```text
+TrendDistance_200D_i = (P_i,t / SMA_200D_i,t) - 1
+TrendDistance_200D_i >= 0
+```
+
+If the stock has fewer than 200 observations on a rebalance date, it is not eligible when the filter is enabled.
+
+### 4.14 Drawdown-Aware Ranking
+
+The drawdown factor calculates each stock's worst peak-to-trough fall over the trailing 126 trading days:
+
+```text
+Drawdown_k = (P_k / max(P_start ... P_k)) - 1
+Drawdown_6M = min(Drawdown_k)
+```
+
+The value is negative or zero. Higher is better because `-0.10` is a shallower drawdown than `-0.35`.
+
 ## 5. Portfolio Construction
 
 At each rebalance date:
@@ -393,6 +438,16 @@ Equal weighting uses the formula above. Score weighting tilts toward higher comp
 7. Hold the selected portfolio until the next rebalance date.
 
 If fewer than `N` stocks are eligible, invest equally across the eligible stocks and add a warning. If zero stocks are eligible, the portfolio stays in cash for that period with return `0`.
+
+### 5.1 Sector Cap
+
+Quant V2 can enable practical sector neutrality through a concentration cap:
+
+```text
+MaxStocksPerSector = max(1, floor(TopN * MaxSectorWeight))
+```
+
+The ranked list is scanned from highest to lowest composite score. A stock is selected only if adding it would not exceed `MaxStocksPerSector` for its sector. This prevents a 15-stock portfolio from becoming mostly one sector while still allowing the model to prefer strong sectors.
 
 ## 6. Backtest Flow
 
@@ -424,6 +479,45 @@ Comparison assets are converted to daily returns and then cumulative wealth. The
 - comparison asset last valid date
 
 If overlap is less than 252 trading days, the UI must show a warning that the comparison is short.
+
+### 6.5 Mutual Fund Category Comparison
+
+Selected mutual funds are grouped by category, such as Flexi Cap, Large Cap, Mid Cap, Small Cap, ELSS, and Index. For every category:
+
+```text
+AverageCategoryCAGR = average(CAGR_fund_1 ... CAGR_fund_n)
+AverageCategorySharpe = average(Sharpe_fund_1 ... Sharpe_fund_n)
+AverageCategoryMaxDrawdown = average(MaxDrawdown_fund_1 ... MaxDrawdown_fund_n)
+AverageCategoryWinRate = average(StrategyMonthlyWinRate_vs_fund)
+```
+
+### 6.6 Rolling Analysis
+
+Quant V2 reports rolling one-year, three-year, and five-year strategy returns when enough observations exist:
+
+```text
+RollingReturn_N,t = (W_t / W_t-N) - 1
+```
+
+The API also reports positive month rate and average one-year rolling return.
+
+### 6.7 Walk-Forward Validation
+
+The selected backtest range is split by observation count:
+
+```text
+Train = first 60% of strategy returns
+Test = final 40% of strategy returns
+```
+
+The same submitted strategy settings are evaluated on both windows. The response reports train metrics, test metrics, and degradation:
+
+```text
+CAGRDegradation = TestCAGR - TrainCAGR
+DrawdownDegradation = TestMaxDrawdown - TrainMaxDrawdown
+```
+
+This is validation, not automatic optimization. It helps identify strategies that look strong only in the full fitted period.
 
 ## 7. API Specification
 

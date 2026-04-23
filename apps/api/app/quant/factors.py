@@ -56,3 +56,31 @@ def average_traded_value(close: pd.Series, volume: pd.Series, lookback_days: int
     if len(traded_value) < lookback_days:
         return None
     return float(traded_value.tail(lookback_days).mean())
+
+
+def trend_distance(prices: pd.Series, lookback_days: int) -> float | None:
+    clean = prices.dropna()
+    if len(clean) < lookback_days:
+        return None
+    moving_average = clean.tail(lookback_days).mean()
+    if moving_average == 0 or pd.isna(moving_average):
+        return None
+    return float((clean.iloc[-1] / moving_average) - 1)
+
+
+def max_drawdown_factor(prices: pd.Series, lookback_days: int) -> float | None:
+    clean = prices.dropna().tail(lookback_days)
+    if len(clean) < lookback_days:
+        return None
+    wealth = clean / clean.iloc[0]
+    drawdown = (wealth / wealth.cummax()) - 1
+    return float(drawdown.min())
+
+
+def relative_momentum(prices: pd.Series, benchmark: pd.Series, lookback_days: int) -> float | None:
+    aligned = pd.concat([prices.rename("stock"), benchmark.rename("benchmark")], axis=1).dropna()
+    if len(aligned) <= lookback_days:
+        return None
+    stock_return = (aligned["stock"].iloc[-1] / aligned["stock"].iloc[-lookback_days - 1]) - 1
+    benchmark_return = (aligned["benchmark"].iloc[-1] / aligned["benchmark"].iloc[-lookback_days - 1]) - 1
+    return float(stock_return - benchmark_return)

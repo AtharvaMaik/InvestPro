@@ -212,7 +212,7 @@ select:focus {
 
 .segmented {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(76px, 1fr));
   gap: 6px;
   border-radius: 7px;
   background: var(--surface-soft);
@@ -242,6 +242,30 @@ select:focus {
 .factor-list {
   display: grid;
   gap: 10px;
+}
+
+.control-stack {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.toggle-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.toggle-row input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.compact-field {
+  gap: 6px;
 }
 
 .factor-row {
@@ -323,6 +347,29 @@ select:focus {
 .chart-panel {
   min-width: 0;
   padding: 18px;
+}
+
+.mini-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mini-metrics div {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.mini-metrics span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.mini-metrics strong {
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .wide {
@@ -488,6 +535,10 @@ th {
   .panel-title {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .mini-metrics {
+    grid-template-columns: 1fr;
   }
 }
 

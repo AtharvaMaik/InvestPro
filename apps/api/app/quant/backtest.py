@@ -6,7 +6,16 @@ import pandas as pd
 
 from app.data import demo, live
 from app.models import BacktestRequest, BacktestResponse, ComparisonResult, WarningMessage
-from app.quant.factors import average_traded_value, composite_scores, momentum, trailing_volatility, zscore_factor
+from app.quant.factors import (
+    average_traded_value,
+    composite_scores,
+    max_drawdown_factor,
+    momentum,
+    relative_momentum,
+    trailing_volatility,
+    trend_distance,
+    zscore_factor,
+)
 from app.quant.metrics import calculate_metrics, drawdown_series, wealth_index
 
 
@@ -29,7 +38,8 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
     close = prices.pivot(index="date", columns="symbol", values="adjustedClose").sort_index()
     volume = prices.pivot(index="date", columns="symbol", values="volume").sort_index()
     returns = close.pct_change().fillna(0)
-    fundamentals = demo.fundamentals().set_index("symbol")
+    benchmark_prices = _benchmark_series(request, warnings)
+    fundamentals = _fundamentals(request, symbols, warnings).set_index("symbol")
     rebalance_dates = _rebalance_dates(close.index, request.rebalanceFrequency)
     weights = {factor.id: factor.weight for factor in request.factors}
 
@@ -41,10 +51,12 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
 
     for position, rebalance_date in enumerate(rebalance_dates):
         next_date = rebalance_dates[position + 1] if position + 1 < len(rebalance_dates) else returns.index[-1]
-        factor_scores = _factor_scores(close.loc[:rebalance_date], volume.loc[:rebalance_date], weights, fundamentals)
+        factor_scores = _factor_scores(close.loc[:rebalance_date], volume.loc[:rebalance_date], weights, fundamentals, benchmark_prices.loc[:rebalance_date])
         ranked = composite_scores(factor_scores, weights)
+        if request.trendFilter:
+            ranked = _apply_trend_filter(ranked, close.loc[:rebalance_date])
         diagnostics_samples.extend(_diagnostic_samples(factor_scores, close, rebalance_date, next_date))
-        selected = ranked.head(min(request.topN, len(ranked)))
+        selected = _select_with_sector_caps(ranked, request.topN, fundamentals, request.sectorNeutral, request.maxSectorWeight)
         if selected.empty:
             warnings.append(WarningMessage(code="NO_ELIGIBLE_STOCKS", message=f"No stocks were eligible on {rebalance_date.date()}."))
             continue
@@ -65,6 +77,7 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
                 "symbols": [
                     {
                         "symbol": symbol,
+                        "sector": str(fundamentals.loc[symbol, "sector"]) if symbol in fundamentals.index and "sector" in fundamentals.columns else "Unknown",
                         "weight": float(target_weights[symbol]),
                         "compositeScore": float(selected[symbol]),
                         "factorScores": {factor_id: float(scores.get(symbol, 0)) for factor_id, scores in factor_scores.items()},
@@ -85,6 +98,10 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
     drawdowns = _drawdown_points(strategy_wealth, request, warnings)
     factor_diagnostics = _factor_diagnostics(diagnostics_samples)
     robustness = _robustness_snapshot(request, portfolio_returns, strategy_metrics)
+    rolling_returns = _rolling_returns(strategy_wealth)
+    fund_category_comparison = _fund_category_comparison(comparisons)
+    rolling_analysis = _rolling_analysis(portfolio_returns, comparisons)
+    walk_forward = _walk_forward_snapshot(request, portfolio_returns)
 
     return BacktestResponse(
         id=f"bt_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
@@ -102,13 +119,17 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
         series={
             "equityCurve": equity_curve,
             "drawdown": drawdowns,
-            "rollingReturns": {"oneYear": [], "threeYear": [], "fiveYear": []},
+            "rollingReturns": rolling_returns,
             "monthlyReturns": _monthly_returns(portfolio_returns),
         },
         holdings=holdings,
         comparisons=comparisons,
         factorDiagnostics=factor_diagnostics,
         robustness=robustness,
+        sectorExposure=_sector_exposure(holdings),
+        fundCategoryComparison=fund_category_comparison,
+        rollingAnalysis=rolling_analysis,
+        walkForward=walk_forward,
         warnings=warnings,
     )
 
@@ -131,6 +152,32 @@ def _price_data(request: BacktestRequest, warnings: list[WarningMessage]) -> pd.
         return demo.price_data()
 
 
+def _fundamentals(request: BacktestRequest, symbols: list[str], warnings: list[WarningMessage]) -> pd.DataFrame:
+    if request.dataSource == "demo":
+        return demo.fundamentals()
+    try:
+        frame = live.fundamentals(symbols)
+        if frame.empty:
+            raise RuntimeError("No live fundamentals returned.")
+        missing_ratio = frame.drop(columns=["symbol", "sector"], errors="ignore").isna().mean().mean()
+        if pd.notna(missing_ratio) and missing_ratio > 0.35:
+            warnings.append(
+                WarningMessage(
+                    code="SPARSE_LIVE_FUNDAMENTALS",
+                    message="Some live Yahoo Finance fundamentals were unavailable, so affected factor values were skipped.",
+                )
+            )
+        return frame
+    except Exception as exc:
+        warnings.append(
+            WarningMessage(
+                code="LIVE_FUNDAMENTALS_FALLBACK",
+                message=f"Live fundamentals could not be fetched, so seeded fundamentals were used for sector and fundamental factors. Reason: {exc}",
+            )
+        )
+        return demo.fundamentals()
+
+
 def _rebalance_dates(index: pd.DatetimeIndex, frequency: str) -> list[pd.Timestamp]:
     series = pd.Series(index=index, data=index)
     rule = "QE" if frequency == "quarterly" else "ME"
@@ -142,6 +189,7 @@ def _factor_scores(
     volume: pd.DataFrame,
     weights: dict[str, float],
     fundamentals: pd.DataFrame,
+    benchmark: pd.Series,
 ) -> dict[str, pd.Series]:
     raw: dict[str, pd.Series] = {}
     for factor_id in weights:
@@ -158,15 +206,65 @@ def _factor_scores(
                 value = trailing_volatility(price_series, 126)
             elif factor_id == "liquidity_3m":
                 value = average_traded_value(close[symbol], volume[symbol], 63)
-            elif factor_id in {"quality_score", "value_score"} and symbol in fundamentals.index:
+            elif factor_id == "relative_momentum_6m":
+                value = relative_momentum(price_series, benchmark, 126)
+            elif factor_id == "drawdown_6m":
+                value = max_drawdown_factor(price_series, 126)
+            elif factor_id == "trend_200d":
+                value = trend_distance(price_series, 200)
+            elif factor_id in {
+                "quality_score",
+                "value_score",
+                "roe",
+                "roce",
+                "debt_to_equity",
+                "earnings_growth",
+                "pe_ratio",
+                "pb_ratio",
+            } and symbol in fundamentals.index and factor_id in fundamentals.columns:
                 value = fundamentals.loc[symbol, factor_id]
             else:
                 value = None
-            if value is not None:
+            if value is not None and pd.notna(value):
                 values[symbol] = value
         factor_def = FACTOR_DEFS[factor_id]
         raw[factor_id] = zscore_factor(pd.Series(values), higher_is_better=factor_def["direction"] == "higher_is_better")
     return raw
+
+
+def _apply_trend_filter(ranked: pd.Series, close: pd.DataFrame) -> pd.Series:
+    passing = []
+    for symbol in ranked.index:
+        distance = trend_distance(close[symbol].dropna(), 200)
+        if distance is not None and distance >= 0:
+            passing.append(symbol)
+    return ranked.loc[passing]
+
+
+def _select_with_sector_caps(
+    ranked: pd.Series,
+    top_n: int,
+    fundamentals: pd.DataFrame,
+    sector_neutral: bool,
+    max_sector_weight: float,
+) -> pd.Series:
+    if not sector_neutral:
+        return ranked.head(min(top_n, len(ranked)))
+
+    max_per_sector = max(1, int(top_n * max_sector_weight))
+    selected: list[str] = []
+    sector_counts: dict[str, int] = {}
+    for symbol in ranked.index:
+        sector = "Unknown"
+        if symbol in fundamentals.index and "sector" in fundamentals.columns:
+            sector = str(fundamentals.loc[symbol, "sector"])
+        if sector_counts.get(sector, 0) >= max_per_sector:
+            continue
+        selected.append(symbol)
+        sector_counts[sector] = sector_counts.get(sector, 0) + 1
+        if len(selected) >= top_n:
+            break
+    return ranked.loc[selected]
 
 
 def _target_weights(weighting_method: str, selected: pd.Series, close: pd.DataFrame) -> pd.Series:
@@ -303,6 +401,7 @@ def _comparison_results(
                     id=benchmark_id,
                     name="Nifty 50 Demo",
                     type="benchmark",
+                    category="Large Cap Index",
                     metrics=calculate_metrics(benchmark).to_dict(),
                     monthlyWinRate=_monthly_win_rate(strategy_returns, benchmark),
                 )
@@ -313,6 +412,10 @@ def _comparison_results(
         fund["schemeCode"]: fund["schemeName"]
         for fund in [*demo.MUTUAL_FUNDS, *live.CURATED_MUTUAL_FUNDS]
     }
+    fund_categories = {
+        fund["schemeCode"]: fund["category"]
+        for fund in [*demo.MUTUAL_FUNDS, *live.CURATED_MUTUAL_FUNDS]
+    }
     for scheme_code in request.mutualFunds:
         if scheme_code in funds:
             fund_returns = funds[scheme_code].pct_change().fillna(0).reindex(strategy_returns.index).fillna(0)
@@ -321,6 +424,7 @@ def _comparison_results(
                     id=scheme_code,
                     name=fund_names[scheme_code],
                     type="mutual_fund",
+                    category=fund_categories.get(scheme_code, "Mutual Fund"),
                     metrics=calculate_metrics(fund_returns).to_dict(),
                     monthlyWinRate=_monthly_win_rate(strategy_returns, fund_returns),
                 )
@@ -366,6 +470,114 @@ def _monthly_win_rate(strategy: pd.Series, comparison: pd.Series) -> float | Non
     if aligned.empty:
         return None
     return float((aligned.iloc[:, 0] > aligned.iloc[:, 1]).mean())
+
+
+def _rolling_returns(wealth: pd.Series) -> dict[str, list[dict]]:
+    windows = {"oneYear": 252, "threeYear": 756, "fiveYear": 1260}
+    output: dict[str, list[dict]] = {}
+    for label, window in windows.items():
+        if len(wealth) <= window:
+            output[label] = []
+            continue
+        series = (wealth / wealth.shift(window)) - 1
+        output[label] = [
+            {"date": index.date().isoformat(), "strategy": float(value)}
+            for index, value in series.dropna().items()
+        ]
+    return output
+
+
+def _sector_exposure(holdings: list[dict]) -> list[dict]:
+    latest = holdings[-1] if holdings else None
+    if not latest:
+        return []
+    exposure: dict[str, float] = {}
+    for holding in latest["symbols"]:
+        sector = holding.get("sector", "Unknown")
+        exposure[sector] = exposure.get(sector, 0.0) + holding["weight"]
+    return [
+        {"sector": sector, "weight": float(weight), "positions": sum(1 for item in latest["symbols"] if item.get("sector", "Unknown") == sector)}
+        for sector, weight in sorted(exposure.items(), key=lambda item: item[1], reverse=True)
+    ]
+
+
+def _fund_category_comparison(comparisons: list[ComparisonResult]) -> list[dict]:
+    funds = [comparison for comparison in comparisons if comparison.type == "mutual_fund"]
+    if not funds:
+        return []
+    rows = []
+    for category in sorted({fund.category or "Mutual Fund" for fund in funds}):
+        group = [fund for fund in funds if (fund.category or "Mutual Fund") == category]
+        rows.append(
+            {
+                "category": category,
+                "fundCount": len(group),
+                "averageCagr": _average_metric(group, "cagr"),
+                "averageSharpe": _average_metric(group, "sharpe"),
+                "averageMaxDrawdown": _average_metric(group, "max_drawdown"),
+                "averageMonthlyWinRate": _average_win_rate(group),
+            }
+        )
+    return rows
+
+
+def _rolling_analysis(strategy_returns: pd.Series, comparisons: list[ComparisonResult]) -> dict:
+    monthly = (1 + strategy_returns).resample("ME").prod() - 1
+    positive_month_rate = float((monthly > 0).mean()) if not monthly.empty else None
+    one_year = (1 + strategy_returns).cumprod()
+    one_year_returns = (one_year / one_year.shift(252) - 1).dropna()
+    return {
+        "positiveMonthRate": positive_month_rate,
+        "oneYearAverageReturn": float(one_year_returns.mean()) if not one_year_returns.empty else None,
+        "oneYearWinRate": max(
+            [comparison.monthlyWinRate for comparison in comparisons if comparison.monthlyWinRate is not None],
+            default=None,
+        ),
+    }
+
+
+def _walk_forward_snapshot(request: BacktestRequest, returns: pd.Series) -> dict:
+    if len(returns) < 504:
+        return {"status": "insufficient_history"}
+    split_index = max(1, min(len(returns) - 1, int(len(returns) * 0.6)))
+    train = returns.iloc[:split_index]
+    test = returns.iloc[split_index:]
+    train_metrics = calculate_metrics(train).to_dict()
+    test_metrics = calculate_metrics(test).to_dict()
+    train_cagr = train_metrics.get("cagr")
+    test_cagr = test_metrics.get("cagr")
+    train_drawdown = train_metrics.get("max_drawdown")
+    test_drawdown = test_metrics.get("max_drawdown")
+    return {
+        "status": "completed",
+        "method": "fixed submitted weights; 60 percent train, 40 percent test",
+        "train": {
+            "startDate": str(train.index.min().date()),
+            "endDate": str(train.index.max().date()),
+            "metrics": train_metrics,
+        },
+        "test": {
+            "startDate": str(test.index.min().date()),
+            "endDate": str(test.index.max().date()),
+            "metrics": test_metrics,
+        },
+        "degradation": {
+            "cagr": float(test_cagr - train_cagr) if train_cagr is not None and test_cagr is not None else None,
+            "maxDrawdown": float(test_drawdown - train_drawdown) if train_drawdown is not None and test_drawdown is not None else None,
+        },
+        "config": {"topN": request.topN, "rebalanceFrequency": request.rebalanceFrequency},
+    }
+
+
+def _average_metric(comparisons: list[ComparisonResult], key: str) -> float | None:
+    values = [comparison.metrics.get(key) for comparison in comparisons]
+    clean = [float(value) for value in values if value is not None and not pd.isna(value)]
+    return float(sum(clean) / len(clean)) if clean else None
+
+
+def _average_win_rate(comparisons: list[ComparisonResult]) -> float | None:
+    clean = [float(comparison.monthlyWinRate) for comparison in comparisons if comparison.monthlyWinRate is not None]
+    return float(sum(clean) / len(clean)) if clean else None
 
 
 def _benchmark_series(request: BacktestRequest, warnings: list[WarningMessage]) -> pd.Series:

@@ -21,6 +21,9 @@ class BacktestRequest(BaseModel):
     weightingMethod: Literal["equal", "score", "volatility"] = "equal"
     topN: int = Field(ge=1, le=50)
     transactionCostBps: float = Field(ge=0, le=200)
+    trendFilter: bool = False
+    sectorNeutral: bool = False
+    maxSectorWeight: float = Field(default=0.3, ge=0.05, le=1.0)
     factors: list[FactorSelection]
     benchmarks: list[str] = Field(default_factory=list)
     mutualFunds: list[str] = Field(default_factory=list)
@@ -50,6 +53,7 @@ class ComparisonResult(BaseModel):
     id: str
     name: str
     type: Literal["benchmark", "mutual_fund"]
+    category: str | None = None
     metrics: dict[str, float | None]
     monthlyWinRate: float | None
 
@@ -65,4 +69,8 @@ class BacktestResponse(BaseModel):
     comparisons: list[ComparisonResult]
     factorDiagnostics: list[dict] = Field(default_factory=list)
     robustness: list[dict] = Field(default_factory=list)
+    sectorExposure: list[dict] = Field(default_factory=list)
+    fundCategoryComparison: list[dict] = Field(default_factory=list)
+    rollingAnalysis: dict = Field(default_factory=dict)
+    walkForward: dict = Field(default_factory=dict)
     warnings: list[WarningMessage]
