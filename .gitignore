@@ -12,3 +12,4 @@ __pycache__/
 *.duckdb
 .env
 .env.local
+.vercel
