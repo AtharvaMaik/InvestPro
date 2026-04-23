@@ -183,6 +183,88 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
         </div>
       </div>
 
+      <div className="chart-panel wide">
+        <div className="panel-title">
+          <h2>V4 Rebalance Trades</h2>
+          <span>Target allocation vs current holdings</span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Action</th>
+                <th>Current</th>
+                <th>Target</th>
+                <th>Trade</th>
+                <th>Shares</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.rebalanceTrades.map((trade) => (
+                <tr key={`${trade.symbol}-${trade.tradeAction}`}>
+                  <td>{trade.symbol}</td>
+                  <td><span className={`trade-pill ${trade.tradeAction}`}>{formatTradeAction(trade.tradeAction)}</span></td>
+                  <td>{formatCurrency(trade.currentValue)}</td>
+                  <td>{formatCurrency(trade.targetValue)}</td>
+                  <td>{formatCurrency(trade.tradeValue)}</td>
+                  <td>{trade.estimatedShares ? trade.estimatedShares.toFixed(2) : "n/a"}</td>
+                  <td>{trade.reason}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="chart-panel">
+        <div className="panel-title">
+          <h2>Allocation Plan</h2>
+          <span>Target rupee sizing</span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Weight</th>
+                <th>Target</th>
+                <th>Price</th>
+                <th>Shares</th>
+              </tr>
+            </thead>
+            <tbody>
+              {result.allocationPlan.map((row) => (
+                <tr key={row.symbol}>
+                  <td>{row.symbol}</td>
+                  <td>{formatPercent(row.targetWeight)}</td>
+                  <td>{formatCurrency(row.targetValue)}</td>
+                  <td>{formatCurrency(row.latestPrice)}</td>
+                  <td>{row.estimatedShares ? row.estimatedShares.toFixed(2) : "n/a"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="chart-panel">
+        <div className="panel-title">
+          <h2>Execution Checklist</h2>
+          <span>Before any action</span>
+        </div>
+        <div className="check-list">
+          {result.executionChecklist.map((check) => (
+            <div className={`check-row ${check.status === "pass" ? "pass" : "fail"}`} key={check.name}>
+              <strong>{check.status}</strong>
+              <span>{formatFactorName(check.name)}</span>
+              <p>{check.detail}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="chart-panel">
         <div className="panel-title">
           <h2 className="label-with-info">Fund Categories <InfoButton label="fund categories" description={glossary.fundCategories} /></h2>
@@ -519,6 +601,15 @@ function formatAction(value: "buy_candidate" | "hold" | "review" | "avoid") {
   if (value === "hold") return "Hold";
   if (value === "avoid") return "Avoid";
   return "Review";
+}
+
+function formatTradeAction(value: "buy" | "add" | "trim" | "hold" | "exit" | "avoid") {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatCurrency(value: number | null | undefined) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "n/a";
+  return `₹${Math.round(value).toLocaleString("en-IN")}`;
 }
 
 function buildFinalSummary(result: BacktestResponse) {

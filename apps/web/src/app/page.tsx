@@ -43,31 +43,35 @@ export default function Home() {
           maxPositionWeight: 0.08,
           minLiquidityCrore: 1,
           maxAnnualTurnover: 2,
+          portfolioCapital: 500000,
+          currentHoldings: [],
           factors: data.factors.map((factor) => ({
             id: factor.id,
             weight:
               factor.id === "momentum_6m"
-                ? 0.2
+                ? 0.12
                 : factor.id === "momentum_12m"
-                  ? 0.15
+                  ? 0.14
                   : factor.id === "relative_momentum_6m"
-                    ? 0.15
+                    ? 0.18
                     : factor.id === "drawdown_6m"
-                      ? 0.1
+                      ? 0.12
                       : factor.id === "trend_200d"
-                        ? 0.1
-                        : factor.id === "roe"
+                        ? 0.12
+                        : factor.id === "liquidity_3m"
+                          ? 0.06
+                          : factor.id === "roe"
                           ? 0.1
                           : factor.id === "roce"
                             ? 0.08
                             : factor.id === "debt_to_equity"
-                              ? 0.07
+                              ? 0.08
                               : factor.id === "earnings_growth"
-                                ? 0.05
+                                ? 0.04
                                 : factor.id === "pe_ratio"
-                                  ? 0.05
+                                  ? 0.03
                                   : factor.id === "pb_ratio"
-                                    ? 0.05
+                                    ? 0.03
                                     : 0
           })),
           benchmarks: [data.benchmarks[0]?.id ?? "nifty50-demo"],

@@ -18,6 +18,8 @@ export const glossary = {
     "Minimum average daily traded value in INR crore. Raising it removes less liquid stocks from selection.",
   maxAnnualTurnover:
     "The highest annualized turnover the investor is comfortable with. Higher turnover can mean more costs, taxes, and operational friction.",
+  portfolioSetup:
+    "Capital and optional current holdings used to convert target weights into rupee allocations and rebalance trades.",
   rebalanceFrequency:
     "How often the portfolio is rebuilt. Monthly reacts faster; quarterly usually lowers turnover and trading friction.",
   weightingMethod:

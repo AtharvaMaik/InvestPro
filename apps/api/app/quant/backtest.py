@@ -126,6 +126,10 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
     risk_budget = _risk_budget_snapshot(strategy_metrics, comparisons, _sector_exposure(holdings))
     research_verdict = _research_verdict(data_confidence, investability, risk_budget, walk_forward, holdings)
     action_list = _action_list(holdings, data_confidence)
+    latest_prices = _latest_prices(close)
+    allocation_plan = _allocation_plan(holdings, latest_prices, request.portfolioCapital)
+    rebalance_trades = _rebalance_trades(request, allocation_plan, latest_prices, action_list)
+    execution_checklist = _execution_checklist(data_confidence, investability, research_verdict, strategy_metrics, request)
 
     return BacktestResponse(
         id=f"bt_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
@@ -160,6 +164,9 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
         researchVerdict=research_verdict,
         rebalanceJournal=rebalance_journal,
         actionList=action_list,
+        allocationPlan=allocation_plan,
+        rebalanceTrades=rebalance_trades,
+        executionChecklist=execution_checklist,
         warnings=warnings,
     )
 
@@ -818,6 +825,119 @@ def _action_reason(action: str, composite: float, trend: float, drawdown: float,
     if drawdown < -1.0:
         return "Review because recent drawdown evidence is weak despite selection."
     return f"Review because composite score is {composite:.2f}, trend score is {trend:.2f}, and drawdown score is {drawdown:.2f}."
+
+
+def _latest_prices(close: pd.DataFrame) -> dict[str, float]:
+    latest = close.ffill().iloc[-1] if not close.empty else pd.Series(dtype=float)
+    return {symbol: float(price) for symbol, price in latest.dropna().items()}
+
+
+def _allocation_plan(holdings: list[dict], latest_prices: dict[str, float], capital: float) -> list[dict]:
+    latest = holdings[-1]["symbols"] if holdings else []
+    rows = []
+    for holding in latest:
+        symbol = holding["symbol"]
+        price = latest_prices.get(symbol)
+        target_value = capital * holding.get("weight", 0)
+        estimated_shares = target_value / price if price and price > 0 else None
+        rows.append(
+            {
+                "symbol": symbol,
+                "sector": holding.get("sector", "Unknown"),
+                "targetWeight": holding.get("weight", 0),
+                "targetValue": float(target_value),
+                "latestPrice": price,
+                "estimatedShares": float(estimated_shares) if estimated_shares is not None else None,
+                "compositeScore": holding.get("compositeScore", 0),
+            }
+        )
+    return rows
+
+
+def _rebalance_trades(
+    request: BacktestRequest,
+    allocation_plan: list[dict],
+    latest_prices: dict[str, float],
+    action_list: list[dict],
+) -> list[dict]:
+    targets = {row["symbol"]: row for row in allocation_plan}
+    action_map = {row["symbol"]: row["action"] for row in action_list}
+    current = {}
+    for holding in request.currentHoldings:
+        price = latest_prices.get(holding.symbol, 0)
+        current_value = holding.value
+        if current_value is None and holding.shares is not None:
+            current_value = holding.shares * price
+        current[holding.symbol] = float(current_value or 0)
+
+    rows = []
+    material = max(request.portfolioCapital * 0.01, 1000)
+    for symbol in sorted(set(targets).union(current)):
+        target = targets.get(symbol)
+        target_value = float(target["targetValue"]) if target else 0.0
+        current_value = current.get(symbol, 0.0)
+        delta = target_value - current_value
+        model_action = action_map.get(symbol)
+        if model_action == "avoid":
+            trade_action = "avoid"
+        elif target is None and current_value > 0:
+            trade_action = "exit"
+        elif current_value == 0 and target_value > 0:
+            trade_action = "buy"
+        elif abs(delta) <= material:
+            trade_action = "hold"
+        elif delta > 0:
+            trade_action = "add"
+        else:
+            trade_action = "trim"
+        price = latest_prices.get(symbol)
+        rows.append(
+            {
+                "symbol": symbol,
+                "tradeAction": trade_action,
+                "currentValue": current_value,
+                "targetValue": target_value,
+                "tradeValue": float(delta),
+                "latestPrice": price,
+                "estimatedShares": float(abs(delta) / price) if price and price > 0 else None,
+                "reason": _trade_reason(trade_action),
+            }
+        )
+    order = {"buy": 0, "add": 1, "trim": 2, "hold": 3, "exit": 4, "avoid": 5}
+    return sorted(rows, key=lambda row: (order.get(row["tradeAction"], 9), row["symbol"]))
+
+
+def _execution_checklist(
+    data_confidence: dict,
+    investability: dict,
+    research_verdict: dict,
+    strategy_metrics: dict[str, float | None],
+    request: BacktestRequest,
+) -> list[dict]:
+    turnover = strategy_metrics.get("annualTurnover") or 0
+    return [
+        _execution_check("data_confidence", data_confidence.get("level") != "low", f"Data confidence is {data_confidence.get('level')}."),
+        _execution_check("research_verdict", research_verdict.get("status") != "reject", f"Research verdict is {research_verdict.get('status')}."),
+        _execution_check("investability", investability.get("verdict") != "not_investable", f"Investability verdict is {investability.get('verdict')}."),
+        _execution_check("turnover_budget", turnover <= request.maxAnnualTurnover, f"Annual turnover is {turnover:.1%}; budget is {request.maxAnnualTurnover:.1%}."),
+        _execution_check("stagger_execution", True, "Use staggered execution and limit orders for large orders; this is research, not advice."),
+    ]
+
+
+def _trade_reason(action: str) -> str:
+    reasons = {
+        "buy": "New target position from the latest model portfolio.",
+        "add": "Target allocation is meaningfully above current holding value.",
+        "trim": "Current holding value is above the model target allocation.",
+        "hold": "Current holding value is close to target allocation.",
+        "exit": "Current holding is not in the latest target portfolio.",
+        "avoid": "Model action flagged execution or research risk.",
+    }
+    return reasons.get(action, "Review the model output before acting.")
+
+
+def _execution_check(name: str, passed: bool, detail: str) -> dict:
+    return {"name": name, "status": "pass" if passed else "block", "detail": detail}
 
 
 def _check(name: str, passed: bool, detail: str) -> dict:

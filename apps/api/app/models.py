@@ -11,6 +11,12 @@ class FactorSelection(BaseModel):
     weight: float
 
 
+class CurrentHolding(BaseModel):
+    symbol: str
+    value: float | None = Field(default=None, ge=0)
+    shares: float | None = Field(default=None, ge=0)
+
+
 class BacktestRequest(BaseModel):
     dataSource: Literal["demo", "live"] = "demo"
     universeId: str
@@ -27,6 +33,8 @@ class BacktestRequest(BaseModel):
     maxPositionWeight: float = Field(default=0.1, ge=0.01, le=1.0)
     minLiquidityCrore: float = Field(default=0, ge=0)
     maxAnnualTurnover: float = Field(default=3.0, ge=0.1, le=20)
+    portfolioCapital: float = Field(default=500000, ge=0)
+    currentHoldings: list[CurrentHolding] = Field(default_factory=list)
     factors: list[FactorSelection]
     benchmarks: list[str] = Field(default_factory=list)
     mutualFunds: list[str] = Field(default_factory=list)
@@ -82,4 +90,7 @@ class BacktestResponse(BaseModel):
     researchVerdict: dict = Field(default_factory=dict)
     rebalanceJournal: list[dict] = Field(default_factory=list)
     actionList: list[dict] = Field(default_factory=list)
+    allocationPlan: list[dict] = Field(default_factory=list)
+    rebalanceTrades: list[dict] = Field(default_factory=list)
+    executionChecklist: list[dict] = Field(default_factory=list)
     warnings: list[WarningMessage]

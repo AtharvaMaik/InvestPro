@@ -10,6 +10,8 @@ The app must not present results as personalized buy or sell advice. It must pre
 
 The app-facing product is live-data only. Seeded demo utilities may remain in the repository for automated tests, but the user workflow initializes `dataSource = live`, labels metadata as live, hides demo-only quality/value factors, and does not silently replace failed live providers with fake price, benchmark, NAV, or fundamental data.
 
+V4 adds portfolio workflow fields: `portfolioCapital`, `currentHoldings`, `allocationPlan`, `rebalanceTrades`, and `executionChecklist`. These convert model target weights into rupee-level research allocations and rebalance actions while keeping the product framed as research software, not personalized advice.
+
 The default V1 flow is:
 
 1. User opens the research workspace.

@@ -46,6 +46,8 @@ export type BacktestRequest = {
   maxPositionWeight: number;
   minLiquidityCrore: number;
   maxAnnualTurnover: number;
+  portfolioCapital: number;
+  currentHoldings: Array<{ symbol: string; value?: number | null; shares?: number | null }>;
   factors: { id: string; weight: number }[];
   benchmarks: string[];
   mutualFunds: string[];
@@ -169,6 +171,26 @@ export type BacktestResponse = {
     compositeScore: number;
     reason: string;
   }>;
+  allocationPlan: Array<{
+    symbol: string;
+    sector: string;
+    targetWeight: number;
+    targetValue: number;
+    latestPrice: number | null;
+    estimatedShares: number | null;
+    compositeScore: number;
+  }>;
+  rebalanceTrades: Array<{
+    symbol: string;
+    tradeAction: "buy" | "add" | "trim" | "hold" | "exit" | "avoid";
+    currentValue: number;
+    targetValue: number;
+    tradeValue: number;
+    latestPrice: number | null;
+    estimatedShares: number | null;
+    reason: string;
+  }>;
+  executionChecklist: Array<{ name: string; status: "pass" | "block"; detail: string }>;
   holdings: Array<{
     rebalanceDate: string;
     turnover: number;

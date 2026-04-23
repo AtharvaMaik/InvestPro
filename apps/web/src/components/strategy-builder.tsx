@@ -37,6 +37,12 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
     onChange(applyPreset(config, preset));
   }
 
+  function updateHolding(index: number, patch: Partial<{ symbol: string; value: number | null; shares: number | null }>) {
+    update({
+      currentHoldings: config.currentHoldings.map((holding, position) => (position === index ? { ...holding, ...patch } : holding))
+    });
+  }
+
   return (
     <aside className="builder-panel" aria-label="Strategy builder">
       <div className="panel-heading">
@@ -206,6 +212,47 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
             onChange={(event) => update({ maxAnnualTurnover: Number(event.target.value) })}
           />
         </label>
+      </div>
+
+      <div className="portfolio-setup">
+        <div className="section-label label-with-info">
+          Portfolio Setup <InfoButton label="portfolio setup" description={glossary.portfolioSetup} />
+        </div>
+        <label className="field compact-field">
+          <span>Capital: ₹{Math.round(config.portfolioCapital).toLocaleString("en-IN")}</span>
+          <input
+            type="range"
+            min="50000"
+            max="5000000"
+            step="50000"
+            value={config.portfolioCapital}
+            onChange={(event) => update({ portfolioCapital: Number(event.target.value) })}
+          />
+        </label>
+        <div className="holding-editor">
+          {config.currentHoldings.map((holding, index) => (
+            <div className="holding-row" key={`${holding.symbol}-${index}`}>
+              <input
+                aria-label="Holding symbol"
+                placeholder="RELIANCE.NS"
+                value={holding.symbol}
+                onChange={(event) => updateHolding(index, { symbol: event.target.value.toUpperCase() })}
+              />
+              <input
+                aria-label="Holding value"
+                min="0"
+                placeholder="Value"
+                type="number"
+                value={holding.value ?? ""}
+                onChange={(event) => updateHolding(index, { value: event.target.value ? Number(event.target.value) : null })}
+              />
+              <button type="button" onClick={() => update({ currentHoldings: config.currentHoldings.filter((_item, position) => position !== index) })}>Remove</button>
+            </div>
+          ))}
+        </div>
+        <button className="secondary-button" type="button" onClick={() => update({ currentHoldings: [...config.currentHoldings, { symbol: "", value: 0 }] })}>
+          Add current holding
+        </button>
       </div>
 
       <div className="factor-list">

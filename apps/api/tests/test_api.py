@@ -192,6 +192,55 @@ def test_backtest_v3_decision_layer_returns_verdict_guardrails_and_journal():
     assert {"added", "removed", "retained"}.issubset(body["rebalanceJournal"][-1])
 
 
+def test_backtest_v4_returns_allocation_trades_and_execution_checklist():
+    payload = {
+        "universeId": "nifty50-demo",
+        "customSymbols": [],
+        "startDate": "2020-01-01",
+        "endDate": "2024-12-31",
+        "rebalanceFrequency": "quarterly",
+        "weightingMethod": "equal",
+        "topN": 10,
+        "transactionCostBps": 25,
+        "trendFilter": True,
+        "sectorNeutral": True,
+        "maxSectorWeight": 0.35,
+        "maxPositionWeight": 0.12,
+        "minLiquidityCrore": 1,
+        "maxAnnualTurnover": 3.0,
+        "portfolioCapital": 500000,
+        "currentHoldings": [
+            {"symbol": "RELIANCE.NS", "value": 100000},
+            {"symbol": "TCS.NS", "shares": 5},
+            {"symbol": "LEGACY.NS", "value": 25000},
+        ],
+        "factors": [
+            {"id": "momentum_6m", "weight": 0.2},
+            {"id": "relative_momentum_6m", "weight": 0.2},
+            {"id": "drawdown_6m", "weight": 0.15},
+            {"id": "trend_200d", "weight": 0.1},
+            {"id": "roe", "weight": 0.15},
+            {"id": "debt_to_equity", "weight": 0.1},
+            {"id": "pe_ratio", "weight": 0.1},
+        ],
+        "benchmarks": ["nifty50-demo"],
+        "mutualFunds": ["ppfas-flexi-demo"],
+    }
+
+    response = client.post("/backtests", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["allocationPlan"]
+    assert all("targetValue" in row and "estimatedShares" in row for row in body["allocationPlan"])
+    assert body["rebalanceTrades"]
+    trade_actions = {trade["tradeAction"] for trade in body["rebalanceTrades"]}
+    assert "exit" in trade_actions
+    assert trade_actions.intersection({"buy", "add", "trim", "hold", "avoid"})
+    assert body["executionChecklist"]
+    assert all("status" in item and "detail" in item for item in body["executionChecklist"])
+
+
 def test_factor_metadata_includes_fundamental_factors():
     response = client.get("/factors")
     assert response.status_code == 200

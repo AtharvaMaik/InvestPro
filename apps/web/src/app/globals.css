@@ -542,6 +542,39 @@ select:focus {
   padding: 12px;
 }
 
+.portfolio-setup {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px;
+}
+
+.holding-editor {
+  display: grid;
+  gap: 8px;
+}
+
+.holding-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px auto;
+  gap: 6px;
+}
+
+.holding-row button,
+.secondary-button {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.secondary-button {
+  width: 100%;
+}
+
 .toggle-row {
   display: grid;
   grid-template-columns: 18px minmax(0, 1fr);
@@ -757,6 +790,38 @@ select:focus {
 }
 
 .action-card.avoid b {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.trade-pill {
+  display: inline-flex;
+  min-width: 58px;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.trade-pill.buy,
+.trade-pill.add {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.trade-pill.trim {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.trade-pill.hold {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.trade-pill.exit,
+.trade-pill.avoid {
   background: #fee2e2;
   color: #991b1b;
 }
@@ -1049,6 +1114,10 @@ th {
   }
 
   .factor-row {
+    grid-template-columns: 1fr;
+  }
+
+  .holding-row {
     grid-template-columns: 1fr;
   }
 }
