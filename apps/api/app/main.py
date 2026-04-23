@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.data import demo, live
-from app.models import BacktestRequest, BacktestResponse
+from app.models import BacktestRequest, BacktestResponse, CsvImportRequest, TradesCsvExportRequest
+from app.portfolio.csv_io import export_trades_csv, parse_holdings_csv
 from app.quant.backtest import run_backtest
 
 app = FastAPI(title="InvestPro API", version="0.1.0")
@@ -71,6 +72,16 @@ def benchmarks() -> dict[str, list[dict]]:
             }
         ]
     }
+
+
+@app.post("/portfolios/import-csv")
+def import_portfolio_csv(request: CsvImportRequest) -> dict:
+    return parse_holdings_csv(request.csvText, valid_symbols=set(demo.SYMBOLS))
+
+
+@app.post("/backtests/export-trades-csv")
+def export_backtest_trades_csv(request: TradesCsvExportRequest) -> Response:
+    return Response(content=export_trades_csv(request.trades), media_type="text/csv")
 
 
 @app.get("/mutual-funds/search")

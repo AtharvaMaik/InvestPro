@@ -34,6 +34,33 @@ def test_stocks_endpoint_returns_searchable_universe():
     assert all(stock["source"] == "live" for stock in stocks)
 
 
+def test_portfolio_csv_import_and_trade_export_endpoints():
+    import_response = client.post("/portfolios/import-csv", json={"csvText": "Instrument,Qty,Avg Price\nRELIANCE.NS,10,2400\n"})
+    assert import_response.status_code == 200
+    assert import_response.json()["holdings"][0]["symbol"] == "RELIANCE.NS"
+
+    export_response = client.post(
+        "/backtests/export-trades-csv",
+        json={
+            "trades": [
+                {
+                    "symbol": "TCS.NS",
+                    "tradeAction": "buy",
+                    "currentValue": 0,
+                    "targetValue": 50000,
+                    "tradeValue": 50000,
+                    "latestPrice": 4000,
+                    "estimatedShares": 12.5,
+                    "reason": "New target position",
+                }
+            ]
+        },
+    )
+    assert export_response.status_code == 200
+    assert export_response.headers["content-type"].startswith("text/csv")
+    assert "TCS.NS,buy" in export_response.text
+
+
 def test_default_mutual_fund_menu_has_multiple_categories():
     response = client.get("/mutual-funds/search")
     assert response.status_code == 200

@@ -555,6 +555,20 @@ select:focus {
   gap: 8px;
 }
 
+.csv-importer {
+  display: grid;
+  gap: 6px;
+}
+
+.csv-importer input {
+  padding: 8px 10px;
+}
+
+.csv-importer span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
 .stock-combobox {
   display: grid;
   gap: 8px;
@@ -615,6 +629,17 @@ select:focus {
 
 .secondary-button {
   width: 100%;
+}
+
+.mini-action-button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--accent-strong);
+  padding: 0 10px;
+  font-size: 0.78rem;
+  font-weight: 900;
 }
 
 .toggle-row {

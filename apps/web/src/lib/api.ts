@@ -37,6 +37,19 @@ export type StockOption = {
   source: string;
 };
 
+export type CsvImportResult = {
+  holdings: Array<{
+    symbol: string;
+    shares?: number | null;
+    averageCost?: number | null;
+    value?: number | null;
+    notes?: string | null;
+    status: "valid" | "warning" | "error";
+    message: string;
+  }>;
+  warnings: Array<{ code: string; message: string }>;
+};
+
 export type BacktestRequest = {
   dataSource: "demo" | "live";
   universeId: string;
@@ -309,4 +322,28 @@ export async function runBacktest(payload: BacktestRequest): Promise<BacktestRes
   }
 
   return response.json() as Promise<BacktestResponse>;
+}
+
+export async function importPortfolioCsv(csvText: string): Promise<CsvImportResult> {
+  const response = await fetch(`${API_BASE}/portfolios/import-csv`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ csvText })
+  });
+  if (!response.ok) {
+    throw new Error(`CSV import failed: ${response.status}`);
+  }
+  return response.json() as Promise<CsvImportResult>;
+}
+
+export async function exportTradesCsv(trades: BacktestResponse["rebalanceTrades"]): Promise<string> {
+  const response = await fetch(`${API_BASE}/backtests/export-trades-csv`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ trades })
+  });
+  if (!response.ok) {
+    throw new Error(`Trade export failed: ${response.status}`);
+  }
+  return response.text();
 }

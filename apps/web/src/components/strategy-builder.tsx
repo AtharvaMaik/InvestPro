@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { CsvImporter } from "@/components/csv-importer";
 import type { BacktestRequest, Benchmark, FactorMeta, MutualFund, StockOption, Universe } from "@/lib/api";
 import { InfoButton } from "@/components/info-button";
 import { glossary } from "@/lib/glossary";
@@ -238,6 +239,7 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, s
         <div className="section-label label-with-info">
           Portfolio Setup <InfoButton label="portfolio setup" description={glossary.portfolioSetup} />
         </div>
+        <CsvImporter currentHoldings={config.currentHoldings} onApply={(holdings) => update({ currentHoldings: holdings })} />
         <label className="field compact-field">
           <span>Capital: Rs {Math.round(config.portfolioCapital).toLocaleString("en-IN")}</span>
           <input

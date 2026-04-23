@@ -62,6 +62,14 @@ class WarningMessage(BaseModel):
     message: str
 
 
+class CsvImportRequest(BaseModel):
+    csvText: str
+
+
+class TradesCsvExportRequest(BaseModel):
+    trades: list[dict]
+
+
 class ComparisonResult(BaseModel):
     id: str
     name: str

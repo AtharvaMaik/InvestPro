@@ -7,6 +7,7 @@ import { InfoButton } from "@/components/info-button";
 import { PortfolioTracker } from "@/components/portfolio-tracker";
 import { StockExplanationPanel } from "@/components/stock-explanation";
 import type { BacktestResponse, MetricSet } from "@/lib/api";
+import { exportTradesCsv } from "@/lib/api";
 import { glossary } from "@/lib/glossary";
 
 type Props = {
@@ -200,7 +201,9 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
       <div className="chart-panel wide">
         <div className="panel-title">
           <h2>V4 Rebalance Trades</h2>
-          <span>Target allocation vs current holdings</span>
+          <button className="mini-action-button" type="button" onClick={() => downloadTrades(result.rebalanceTrades)}>
+            Export CSV
+          </button>
         </div>
         <div className="table-wrap">
           <table>
@@ -666,6 +669,19 @@ function formatTradeAction(value: "buy" | "add" | "trim" | "hold" | "exit" | "av
 function formatCurrency(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) return "n/a";
   return `Rs ${Math.round(value).toLocaleString("en-IN")}`;
+}
+
+async function downloadTrades(trades: BacktestResponse["rebalanceTrades"]) {
+  const csv = await exportTradesCsv(trades);
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "investpro-rebalance-trades.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
 }
 
 function buildFinalSummary(result: BacktestResponse) {
