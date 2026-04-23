@@ -12,6 +12,8 @@ The app-facing product is live-data only. Seeded demo utilities may remain in th
 
 V4 adds portfolio workflow fields: `portfolioCapital`, `currentHoldings`, `allocationPlan`, `rebalanceTrades`, and `executionChecklist`. These convert model target weights into rupee-level research allocations and rebalance actions while keeping the product framed as research software, not personalized advice.
 
+V5 begins by making current portfolio entry data-backed. The frontend fetches the stock universe from `GET /stocks`, lets the user search by symbol, display name, or sector, and adds the selected stock into `currentHoldings` with optional rupee value and share quantity. This removes fragile manual symbol typing from the main workflow.
+
 The default V1 flow is:
 
 1. User opens the research workspace.
@@ -75,11 +77,24 @@ NAV series are comparison assets only in V1. The app does not recommend mutual f
     { "id": "liquidity_3m", "weight": 0.20 }
   ],
   "benchmarks": ["nifty50-demo"],
-  "mutualFunds": ["ppfas-flexi-demo"]
+  "mutualFunds": ["ppfas-flexi-demo"],
+  "portfolioCapital": 500000,
+  "currentHoldings": [
+    { "symbol": "RELIANCE.NS", "value": 100000 },
+    { "symbol": "TCS.NS", "shares": 5 }
+  ]
 }
 ```
 
 Factor weights are normalized by the backend so their absolute sum equals 1. If all submitted factor weights are zero, the API rejects the request.
+
+`currentHoldings` is optional. Each row must include a `symbol` from the supported stock universe. A holding may specify `value`, `shares`, or both. When a value is present it is used directly as current rupee exposure. When only shares are present, the backend estimates current exposure as:
+
+```text
+CurrentValue_i = Shares_i * LatestPrice_i
+```
+
+Rows with unknown symbols are treated as legacy holdings and can appear as exit or avoid actions in the rebalance output.
 
 ## 3. Math Definitions
 
@@ -705,7 +720,39 @@ Response:
 
 Empty query returns a curated default list in V1.
 
-### 7.6 `POST /backtests`
+### 7.6 `GET /stocks`
+
+Purpose: return the stock universe used by the portfolio setup search control.
+
+Response:
+
+```json
+{
+  "stocks": [
+    {
+      "symbol": "RELIANCE.NS",
+      "name": "RELIANCE",
+      "sector": "Energy",
+      "source": "live"
+    },
+    {
+      "symbol": "TCS.NS",
+      "name": "TCS",
+      "sector": "Information Technology",
+      "source": "live"
+    }
+  ]
+}
+```
+
+Frontend use:
+
+1. Fetch once during initial metadata load.
+2. Search client-side by `symbol`, `name`, or `sector`.
+3. Exclude symbols already present in `currentHoldings` from the quick suggestions.
+4. Add the selected symbol to `currentHoldings` with editable `value` and `shares` fields.
+
+### 7.7 `POST /backtests`
 
 Purpose: run a factor strategy backtest.
 
@@ -851,7 +898,7 @@ HTTP status: `404`.
 ### 9.1 Initial Load
 
 1. Render the workspace shell immediately.
-2. Fetch `/universes`, `/factors`, `/benchmarks`, and default mutual fund search results in parallel.
+2. Fetch `/universes`, `/factors`, `/benchmarks`, `/stocks`, and default mutual fund search results in parallel.
 3. Fill the strategy builder with a sensible default config.
 4. Show a demo-ready call to action: "Run Backtest".
 
@@ -868,6 +915,9 @@ Controls:
 - Transaction cost input in basis points.
 - Benchmark selector.
 - Mutual fund search and selected fund chips.
+- Portfolio capital slider.
+- Searchable current-holding stock picker backed by `GET /stocks`.
+- Current-holding rows with stock dropdown, rupee value, share count, and remove action.
 
 Validation:
 
@@ -875,6 +925,7 @@ Validation:
 - Top-N must be positive.
 - Transaction cost must be between 0 and 200 bps.
 - End date must be after start date.
+- Current holding symbols should come from the stock universe unless intentionally modeling a legacy position to exit.
 
 ### 9.3 Running A Backtest
 
@@ -955,6 +1006,19 @@ Motion should be smooth as butter but never distracting:
 - Skeleton states must occupy the same dimensions as loaded content.
 - No text should overlap at desktop, tablet, or mobile breakpoints.
 
+### 10.5 Portfolio Stock Picker
+
+The portfolio setup control must optimize for fast, error-resistant entry:
+
+- Use a searchable input with native `datalist` support plus visible suggestion buttons.
+- Match query text against ticker symbol, display name, and sector.
+- Convert typed text to uppercase so NSE tickers remain consistent.
+- Hide already selected symbols from the suggestion list.
+- Add the chosen stock into `currentHoldings` with default `value = 0` and `shares = null`.
+- Keep value and shares editable after selection.
+- Use a stable row key so typing or changing values does not remount inputs.
+- On mobile, stack search, suggestions, dropdown, value, shares, and remove controls into one column.
+
 ## 11. Backend Flow
 
 ### 11.1 Backtest Request Processing
@@ -980,6 +1044,9 @@ Motion should be smooth as butter but never distracting:
 - A factor with zero cross-sectional standard deviation contributes score `0` for all stocks on that date.
 - A missing benchmark or mutual fund comparison does not invalidate the strategy run unless the user selected only invalid comparison assets.
 - Warnings are returned with machine-readable codes and human-readable messages.
+- `GET /stocks` must use the same supported symbol list as the investable universe so portfolio setup cannot easily create malformed holdings.
+- If a current holding has shares but no value, latest available stock price is used to estimate its current value.
+- If a current holding has a value, that value takes priority over share-based estimation.
 
 ## 12. Testing Expectations
 
@@ -1009,6 +1076,7 @@ Tests must verify:
 
 - health endpoint response
 - metadata endpoints
+- searchable stock universe endpoint
 - valid backtest request
 - invalid date range
 - unknown factor
@@ -1021,6 +1089,7 @@ Tests must verify:
 
 - default strategy config renders
 - factor weight controls update state
+- portfolio stock search filters and adds selected holdings
 - invalid form states block submission
 - successful backtest renders metric cards and charts
 - API error renders an inline error panel
