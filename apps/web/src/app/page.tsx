@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { ResultsDashboard } from "@/components/results-dashboard";
@@ -109,6 +110,9 @@ export default function Home() {
 
   return (
     <main className="workspace">
+      <Link className="guide-floating-link" href="/guide">
+        Factor guide
+      </Link>
       {metadata && config ? (
         <StrategyBuilder
           universes={metadata.universes}

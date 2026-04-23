@@ -46,11 +46,38 @@ button:disabled {
 }
 
 .workspace {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
   gap: 20px;
   min-height: 100vh;
   padding: 20px;
+}
+
+.guide-floating-link {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 1px solid rgba(15, 118, 110, 0.22);
+  border-radius: 999px;
+  background: var(--ink);
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.18);
+  color: white;
+  padding: 0 16px;
+  font-size: 0.86rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.guide-floating-link:hover {
+  background: var(--accent-strong);
+  transform: translateY(-1px);
 }
 
 .builder-panel,
@@ -242,6 +269,197 @@ select:focus {
 .factor-list {
   display: grid;
   gap: 10px;
+}
+
+.guide-shell {
+  display: grid;
+  gap: 28px;
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 22px 0 48px;
+}
+
+.guide-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+}
+
+.guide-nav a,
+.source-links a {
+  color: var(--accent-strong);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.guide-nav span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.guide-hero {
+  display: grid;
+  gap: 16px;
+  padding: 34px 0 12px;
+}
+
+.guide-hero h1 {
+  max-width: 920px;
+  font-size: clamp(2.4rem, 6vw, 5.6rem);
+  line-height: 0.94;
+}
+
+.guide-hero p {
+  max-width: 780px;
+  font-size: 1.05rem;
+}
+
+.guide-section {
+  display: grid;
+  gap: 18px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+
+.guide-section > div:first-child {
+  display: grid;
+  gap: 8px;
+}
+
+.guide-section h2 {
+  max-width: 780px;
+  font-size: clamp(1.6rem, 3vw, 2.6rem);
+  line-height: 1;
+}
+
+.guide-card-grid,
+.factor-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.guide-card,
+.factor-guide,
+.recipe-panel,
+.decision-panel,
+.sources-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow);
+}
+
+.guide-card,
+.factor-guide {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 150px;
+  padding: 16px;
+}
+
+.guide-card h3,
+.factor-guide h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.factor-guide p strong {
+  color: var(--ink);
+}
+
+.split-guide {
+  grid-template-columns: minmax(0, 0.95fr) minmax(320px, 1fr);
+  align-items: start;
+}
+
+.recipe-panel,
+.decision-panel {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+}
+
+.recipe-panel div,
+.decision-panel p {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 14px 16px;
+}
+
+.recipe-panel div:last-child,
+.decision-panel p:last-child {
+  border-bottom: 0;
+}
+
+.recipe-panel span {
+  color: var(--muted);
+}
+
+.recipe-panel strong {
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.workflow-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: workflow;
+}
+
+.workflow-list li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 14px;
+  color: var(--muted);
+  line-height: 1.45;
+  counter-increment: workflow;
+}
+
+.workflow-list li::before {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--accent-strong);
+  font-weight: 900;
+  content: counter(workflow);
+}
+
+.sources-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  padding: 20px;
+}
+
+.source-links {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.source-links a {
+  border: 1px solid rgba(15, 118, 110, 0.2);
+  border-radius: 6px;
+  background: rgba(15, 118, 110, 0.06);
+  padding: 11px 12px;
 }
 
 .control-stack {
@@ -539,6 +757,19 @@ th {
 
   .mini-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .guide-card-grid,
+  .factor-guide-grid,
+  .workflow-list,
+  .split-guide,
+  .sources-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .guide-floating-link {
+    right: 14px;
+    bottom: 14px;
   }
 }
 
