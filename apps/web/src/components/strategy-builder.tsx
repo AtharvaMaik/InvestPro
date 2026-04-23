@@ -73,7 +73,7 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
       </div>
 
       <div className="segmented" aria-label="Top holdings">
-        {[5, 10, 20].map((count) => (
+        {[5, 10, 15, 20, 30].map((count) => (
           <button key={count} className={config.topN === count ? "active" : ""} onClick={() => update({ topN: count })} type="button">
             Top {count}
           </button>

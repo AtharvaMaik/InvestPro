@@ -31,13 +31,22 @@ export default function Home() {
           customSymbols: [],
           startDate: "2020-01-01",
           endDate: "2024-12-31",
-          rebalanceFrequency: "monthly",
+          rebalanceFrequency: "quarterly",
           weightingMethod: "equal",
-          topN: 5,
+          topN: 15,
           transactionCostBps: 25,
-          factors: data.factors.map((factor, index) => ({
+          factors: data.factors.map((factor) => ({
             id: factor.id,
-            weight: index < 2 ? 0.5 : factor.id === "volatility_6m" ? 0.25 : 0
+            weight:
+              factor.id === "momentum_6m"
+                ? 0.35
+                : factor.id === "momentum_12m"
+                  ? 0.35
+                  : factor.id === "volatility_6m"
+                    ? 0.2
+                    : factor.id === "liquidity_3m"
+                      ? 0.1
+                      : 0
           })),
           benchmarks: [data.benchmarks[0]?.id ?? "nifty50-demo"],
           mutualFunds: [data.mutualFunds[0]?.schemeCode ?? "ppfas-flexi-demo"]

@@ -13,7 +13,9 @@ def test_health():
 
 
 def test_metadata_endpoints():
-    assert client.get("/universes").json()["universes"]
+    universes = client.get("/universes").json()["universes"]
+    assert universes
+    assert universes[0]["symbolCount"] >= 40
     assert client.get("/factors").json()["factors"]
     assert client.get("/benchmarks").json()["benchmarks"]
     assert client.get("/mutual-funds/search").json()["results"]
