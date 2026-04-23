@@ -557,7 +557,7 @@ select:focus {
 
 .holding-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 90px auto;
+  grid-template-columns: minmax(0, 1fr) 92px 82px auto;
   gap: 6px;
 }
 
@@ -824,6 +824,74 @@ select:focus {
 .trade-pill.avoid {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.trade-timeline {
+  display: grid;
+  gap: 12px;
+}
+
+.timeline-event {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.timeline-event time {
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.timeline-body > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.timeline-body strong {
+  font-size: 0.82rem;
+}
+
+.timeline-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.timeline-chip,
+.timeline-empty {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.timeline-chip.buy {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.timeline-chip.sell {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.timeline-empty {
+  background: var(--surface-soft);
+  color: var(--muted);
 }
 
 .mini-metrics {
@@ -1095,7 +1163,9 @@ th {
   .verdict-panel,
   .final-summary-panel,
   .check-row,
-  .journal-grid {
+  .journal-grid,
+  .timeline-event,
+  .timeline-body {
     grid-template-columns: 1fr;
   }
 

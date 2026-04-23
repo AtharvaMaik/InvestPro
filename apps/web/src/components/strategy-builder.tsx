@@ -219,7 +219,7 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
           Portfolio Setup <InfoButton label="portfolio setup" description={glossary.portfolioSetup} />
         </div>
         <label className="field compact-field">
-          <span>Capital: ₹{Math.round(config.portfolioCapital).toLocaleString("en-IN")}</span>
+          <span>Capital: Rs {Math.round(config.portfolioCapital).toLocaleString("en-IN")}</span>
           <input
             type="range"
             min="50000"
@@ -231,7 +231,7 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
         </label>
         <div className="holding-editor">
           {config.currentHoldings.map((holding, index) => (
-            <div className="holding-row" key={`${holding.symbol}-${index}`}>
+            <div className="holding-row" key={index}>
               <input
                 aria-label="Holding symbol"
                 placeholder="RELIANCE.NS"
@@ -241,10 +241,18 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
               <input
                 aria-label="Holding value"
                 min="0"
-                placeholder="Value"
+                placeholder="Value Rs"
                 type="number"
                 value={holding.value ?? ""}
                 onChange={(event) => updateHolding(index, { value: event.target.value ? Number(event.target.value) : null })}
+              />
+              <input
+                aria-label="Holding shares"
+                min="0"
+                placeholder="Shares"
+                type="number"
+                value={holding.shares ?? ""}
+                onChange={(event) => updateHolding(index, { shares: event.target.value ? Number(event.target.value) : null })}
               />
               <button type="button" onClick={() => update({ currentHoldings: config.currentHoldings.filter((_item, position) => position !== index) })}>Remove</button>
             </div>

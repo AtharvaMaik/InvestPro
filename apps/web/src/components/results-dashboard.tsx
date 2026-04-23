@@ -62,6 +62,7 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
   const latestHoldings = result.holdings.at(-1)?.symbols ?? [];
   const mutualFundKey = result.comparisons.find((item) => item.type === "mutual_fund")?.id;
   const latestJournal = result.rebalanceJournal.at(-1);
+  const tradeTimeline = result.rebalanceJournal.filter((entry) => entry.added.length > 0 || entry.removed.length > 0).slice(-12);
   const finalSummary = buildFinalSummary(result);
 
   return (
@@ -177,10 +178,18 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
               </div>
               <b>{formatAction(item.action)}</b>
               <p>{item.reason}</p>
-              <small>{formatPercent(item.weight)} target weight · score {formatNumber(item.compositeScore)}</small>
+              <small>{formatPercent(item.weight)} target weight - score {formatNumber(item.compositeScore)}</small>
             </article>
           ))}
         </div>
+      </div>
+
+      <div className="chart-panel wide">
+        <div className="panel-title">
+          <h2 className="label-with-info">Buy/Sell Timeline <InfoButton label="rebalance timeline" description={glossary.rebalanceJournal} /></h2>
+          <span>{tradeTimeline.length} recent rebalance events</span>
+        </div>
+        {tradeTimeline.length ? <TradeTimeline rows={tradeTimeline} /> : <p>No buys or sells were generated in this run.</p>}
       </div>
 
       <div className="chart-panel wide">
@@ -573,6 +582,48 @@ function JournalColumn({ title, rows }: { title: string; rows: Array<{ symbol: s
   );
 }
 
+function TradeTimeline({ rows }: { rows: BacktestResponse["rebalanceJournal"] }) {
+  return (
+    <div className="trade-timeline">
+      {rows.map((row) => (
+        <article className="timeline-event" key={row.rebalanceDate}>
+          <time dateTime={row.rebalanceDate}>{row.rebalanceDate}</time>
+          <div className="timeline-body">
+            <div>
+              <strong>Bought</strong>
+              <div className="timeline-chips">
+                {row.added.length ? (
+                  row.added.slice(0, 6).map((item) => (
+                    <span className="timeline-chip buy" key={`buy-${row.rebalanceDate}-${item.symbol}`}>
+                      {item.symbol}
+                    </span>
+                  ))
+                ) : (
+                  <span className="timeline-empty">No buys</span>
+                )}
+              </div>
+            </div>
+            <div>
+              <strong>Sold</strong>
+              <div className="timeline-chips">
+                {row.removed.length ? (
+                  row.removed.slice(0, 6).map((item) => (
+                    <span className="timeline-chip sell" key={`sell-${row.rebalanceDate}-${item.symbol}`} title={item.reason}>
+                      {item.symbol}
+                    </span>
+                  ))
+                ) : (
+                  <span className="timeline-empty">No sells</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function formatPercent(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) return "n/a";
   return `${(value * 100).toFixed(1)}%`;
@@ -609,7 +660,7 @@ function formatTradeAction(value: "buy" | "add" | "trim" | "hold" | "exit" | "av
 
 function formatCurrency(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) return "n/a";
-  return `₹${Math.round(value).toLocaleString("en-IN")}`;
+  return `Rs ${Math.round(value).toLocaleString("en-IN")}`;
 }
 
 function buildFinalSummary(result: BacktestResponse) {
