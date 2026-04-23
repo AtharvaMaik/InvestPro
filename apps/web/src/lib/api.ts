@@ -177,6 +177,7 @@ export type BacktestResponse = {
     weight: number;
     compositeScore: number;
     reason: string;
+    explanation?: StockExplanation;
   }>;
   allocationPlan: Array<{
     symbol: string;
@@ -240,6 +241,23 @@ export type TrackedHolding = {
   drift?: number;
   driftValue?: number;
   notes?: string | null;
+};
+
+export type StockExplanation = {
+  symbol: string;
+  headline: string;
+  positives: FactorContribution[];
+  negatives: FactorContribution[];
+  factorContributions: FactorContribution[];
+  warnings: Array<{ code: string; message: string }>;
+};
+
+export type FactorContribution = {
+  factorId: string;
+  score: number;
+  weight: number;
+  weightedContribution: number;
+  direction: "positive" | "negative";
 };
 
 export type JournalSymbol = {

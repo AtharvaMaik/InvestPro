@@ -156,6 +156,8 @@ def test_backtest_quant_v2_outputs_risk_fundamental_and_validation_sections():
     assert body["walkForward"]["test"]["metrics"]["cagr"] is not None
     assert body["actionList"]
     assert body["actionList"][0]["action"] in {"buy_candidate", "hold", "review", "avoid"}
+    assert body["actionList"][0]["explanation"]["headline"]
+    assert "factorContributions" in body["actionList"][0]["explanation"]
 
 
 def test_backtest_v3_decision_layer_returns_verdict_guardrails_and_journal():

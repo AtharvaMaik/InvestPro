@@ -5,6 +5,7 @@ import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, T
 
 import { InfoButton } from "@/components/info-button";
 import { PortfolioTracker } from "@/components/portfolio-tracker";
+import { StockExplanationPanel } from "@/components/stock-explanation";
 import type { BacktestResponse, MetricSet } from "@/lib/api";
 import { glossary } from "@/lib/glossary";
 
@@ -181,6 +182,7 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
               </div>
               <b>{formatAction(item.action)}</b>
               <p>{item.reason}</p>
+              <StockExplanationPanel explanation={item.explanation} />
               <small>{formatPercent(item.weight)} target weight - score {formatNumber(item.compositeScore)}</small>
             </article>
           ))}

@@ -836,6 +836,55 @@ select:focus {
   color: #991b1b;
 }
 
+.stock-explanation {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.stock-explanation summary {
+  width: fit-content;
+  color: var(--accent-strong);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.explanation-warnings,
+.explanation-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.explanation-warnings span {
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+
+.explanation-columns > div {
+  display: grid;
+  flex: 1 1 150px;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.explanation-columns strong {
+  font-size: 0.78rem;
+}
+
+.explanation-columns span {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
 .trade-pill {
   display: inline-flex;
   min-width: 58px;

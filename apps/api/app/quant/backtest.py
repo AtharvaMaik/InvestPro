@@ -17,6 +17,7 @@ from app.quant.factors import (
     trend_distance,
     zscore_factor,
 )
+from app.quant.explain import explain_stock
 from app.quant.metrics import calculate_metrics, drawdown_series, wealth_index
 
 
@@ -126,7 +127,7 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
     investability = _investability_snapshot(request, holdings, strategy_metrics, _sector_exposure(holdings))
     risk_budget = _risk_budget_snapshot(strategy_metrics, comparisons, _sector_exposure(holdings))
     research_verdict = _research_verdict(data_confidence, investability, risk_budget, walk_forward, holdings)
-    action_list = _action_list(holdings, data_confidence)
+    action_list = _action_list(holdings, data_confidence, weights)
     latest_prices = _latest_prices(close)
     allocation_plan = _allocation_plan(holdings, latest_prices, request.portfolioCapital)
     portfolio_summary = summarize_portfolio([holding.model_dump(mode="json") for holding in request.currentHoldings], latest_prices, cash_value=0)
@@ -785,7 +786,7 @@ def _research_verdict(data_confidence: dict, investability: dict, risk_budget: d
     return {"status": status, "reasons": reasons}
 
 
-def _action_list(holdings: list[dict], data_confidence: dict) -> list[dict]:
+def _action_list(holdings: list[dict], data_confidence: dict, weights: dict[str, float]) -> list[dict]:
     latest = holdings[-1]["symbols"] if holdings else []
     actions = []
     for holding in latest:
@@ -804,15 +805,17 @@ def _action_list(holdings: list[dict], data_confidence: dict) -> list[dict]:
             action = "review"
         if liquidity < -1.5:
             action = "avoid"
+        action_row = {
+            "symbol": holding["symbol"],
+            "sector": holding.get("sector", "Unknown"),
+            "action": action,
+            "weight": holding.get("weight", 0),
+            "compositeScore": composite,
+            "reason": _action_reason(action, composite, trend, drawdown, liquidity),
+            "explanation": explain_stock(holding, weights),
+        }
         actions.append(
-            {
-                "symbol": holding["symbol"],
-                "sector": holding.get("sector", "Unknown"),
-                "action": action,
-                "weight": holding.get("weight", 0),
-                "compositeScore": composite,
-                "reason": _action_reason(action, composite, trend, drawdown, liquidity),
-            }
+            action_row
         )
     order = {"buy_candidate": 0, "hold": 1, "review": 2, "avoid": 3}
     return sorted(actions, key=lambda item: (order[item["action"]], -item["compositeScore"]))
