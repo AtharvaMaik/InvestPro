@@ -161,6 +161,14 @@ export type BacktestResponse = {
     removed: Array<{ symbol: string; reason: string }>;
     retained: Array<JournalSymbol>;
   }>;
+  actionList: Array<{
+    symbol: string;
+    sector: string;
+    action: "buy_candidate" | "hold" | "review" | "avoid";
+    weight: number;
+    compositeScore: number;
+    reason: string;
+  }>;
   holdings: Array<{
     rebalanceDate: string;
     turnover: number;
@@ -193,7 +201,7 @@ async function getJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function getMetadata(source: "demo" | "live" = "demo") {
+export async function getMetadata(source: "demo" | "live" = "live") {
   const [universes, factors, benchmarks, mutualFunds] = await Promise.all([
     getJson<{ universes: Universe[] }>("/universes"),
     getJson<{ factors: FactorMeta[] }>("/factors"),

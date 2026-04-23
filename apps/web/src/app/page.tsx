@@ -27,7 +27,7 @@ export default function Home() {
       .then((data) => {
         setMetadata(data);
         setConfig({
-          dataSource: "demo",
+          dataSource: "live",
           universeId: data.universes[0]?.id ?? "nifty50-demo",
           customSymbols: [],
           startDate: "2020-01-01",
@@ -70,7 +70,7 @@ export default function Home() {
                                     : 0
           })),
           benchmarks: [data.benchmarks[0]?.id ?? "nifty50-demo"],
-          mutualFunds: [data.mutualFunds[0]?.schemeCode ?? "ppfas-flexi-demo"]
+          mutualFunds: [data.mutualFunds[0]?.schemeCode ?? "122639"]
         });
       })
       .catch((loadError: Error) => setError(loadError.message));
@@ -90,32 +90,18 @@ export default function Home() {
   }
 
   function handleConfigChange(next: BacktestRequest) {
-    const previousSource = config?.dataSource;
     setConfig(next);
-
-    if (previousSource && next.dataSource !== previousSource) {
-      getMetadata(next.dataSource)
-        .then((data) => {
-          setMetadata(data);
-          setConfig((current) =>
-            current
-              ? {
-                  ...current,
-                  mutualFunds: [data.mutualFunds[0]?.schemeCode ?? current.mutualFunds[0]],
-                  benchmarks: [data.benchmarks[0]?.id ?? current.benchmarks[0]]
-                }
-              : current
-          );
-        })
-        .catch((loadError: Error) => setError(loadError.message));
-    }
   }
 
   return (
     <main className="workspace">
-      <Link className="guide-floating-link" href="/guide">
-        Factor guide
-      </Link>
+      <nav className="app-topbar" aria-label="Primary navigation">
+        <strong>InvestPro</strong>
+        <div>
+          <span>Live research mode</span>
+          <Link href="/guide">Factor guide</Link>
+        </div>
+      </nav>
       {metadata && config ? (
         <StrategyBuilder
           universes={metadata.universes}

@@ -81,4 +81,5 @@ class BacktestResponse(BaseModel):
     riskBudget: dict = Field(default_factory=dict)
     researchVerdict: dict = Field(default_factory=dict)
     rebalanceJournal: list[dict] = Field(default_factory=list)
+    actionList: list[dict] = Field(default_factory=list)
     warnings: list[WarningMessage]

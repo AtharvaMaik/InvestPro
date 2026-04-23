@@ -8,6 +8,8 @@ InvestPro is an end-to-end Indian equity factor research platform for active sto
 
 The app must not present results as personalized buy or sell advice. It must present research evidence: factor scores, portfolio histories, performance metrics, risk measures, comparison results, and data-quality warnings.
 
+The app-facing product is live-data only. Seeded demo utilities may remain in the repository for automated tests, but the user workflow initializes `dataSource = live`, labels metadata as live, hides demo-only quality/value factors, and does not silently replace failed live providers with fake price, benchmark, NAV, or fundamental data.
+
 The default V1 flow is:
 
 1. User opens the research workspace.

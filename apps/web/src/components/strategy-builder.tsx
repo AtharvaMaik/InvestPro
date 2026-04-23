@@ -3,6 +3,7 @@
 import type { BacktestRequest, Benchmark, FactorMeta, MutualFund, Universe } from "@/lib/api";
 import { InfoButton } from "@/components/info-button";
 import { glossary } from "@/lib/glossary";
+import { applyPreset, strategyPresets } from "@/lib/presets";
 
 type Props = {
   universes: Universe[];
@@ -31,18 +32,20 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
       <div className="panel-heading">
         <span className="eyebrow">Strategy Lab</span>
         <h1>InvestPro</h1>
-        <p>Build a long-only Indian equity factor model and compare it with funds.</p>
+        <p>Run live Indian equity factor presets and inspect stock-level research actions.</p>
       </div>
 
-      <label className="field">
-        <span className="label-with-info">
-          Data source <InfoButton label="data source" description={glossary.dataSource} />
-        </span>
-        <select value={config.dataSource} onChange={(event) => update({ dataSource: event.target.value as "demo" | "live" })}>
-          <option value="demo">Demo data</option>
-          <option value="live">Live data</option>
-        </select>
-      </label>
+      <div className="live-badge">Live data only</div>
+
+      <div className="preset-grid" aria-label="Strategy presets">
+        {strategyPresets.map((preset) => (
+          <button key={preset.id} type="button" onClick={() => onChange(applyPreset(config, preset))}>
+            <strong>{preset.name}</strong>
+            <span>{preset.risk}</span>
+            <p>{preset.description}</p>
+          </button>
+        ))}
+      </div>
 
       <label className="field">
         <span className="label-with-info">
@@ -51,7 +54,7 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
         <select value={config.universeId} onChange={(event) => update({ universeId: event.target.value })}>
           {universes.map((universe) => (
             <option key={universe.id} value={universe.id}>
-              {universe.name} · {universe.symbolCount} stocks
+              {universe.name} - {universe.symbolCount} stocks
             </option>
           ))}
         </select>
@@ -199,7 +202,7 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
             <label className="factor-row" key={factor.id}>
               <div>
                 <strong>{factor.name}</strong>
-                <span>{factor.category} · {factor.direction === "higher_is_better" ? "higher better" : "lower better"}</span>
+                <span>{factor.category} - {factor.direction === "higher_is_better" ? "higher better" : "lower better"}</span>
               </div>
               <input
                 type="number"

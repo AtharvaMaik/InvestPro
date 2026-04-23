@@ -149,6 +149,26 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
         </div>
       </div>
 
+      <div className="chart-panel wide">
+        <div className="panel-title">
+          <h2>Preset Action List</h2>
+          <span>Latest stock research actions</span>
+        </div>
+        <div className="action-grid">
+          {result.actionList.map((item) => (
+            <article className={`action-card ${item.action}`} key={item.symbol}>
+              <div>
+                <strong>{item.symbol}</strong>
+                <span>{item.sector}</span>
+              </div>
+              <b>{formatAction(item.action)}</b>
+              <p>{item.reason}</p>
+              <small>{formatPercent(item.weight)} target weight · score {formatNumber(item.compositeScore)}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+
       <div className="chart-panel">
         <div className="panel-title">
           <h2 className="label-with-info">Fund Categories <InfoButton label="fund categories" description={glossary.fundCategories} /></h2>
@@ -478,4 +498,11 @@ function formatVerdict(value: "pass" | "watch" | "reject") {
   if (value === "pass") return "Research Pass";
   if (value === "watch") return "Watch Closely";
   return "Reject For Now";
+}
+
+function formatAction(value: "buy_candidate" | "hold" | "review" | "avoid") {
+  if (value === "buy_candidate") return "Buy Candidate";
+  if (value === "hold") return "Hold";
+  if (value === "avoid") return "Avoid";
+  return "Review";
 }

@@ -26,27 +26,45 @@ def health() -> dict[str, str]:
 
 @app.get("/universes")
 def universes() -> dict[str, list[dict]]:
-    return {"universes": demo.UNIVERSES}
+    return {
+        "universes": [
+            {
+                **demo.UNIVERSES[0],
+                "name": "Indian Large Cap Universe",
+                "description": "Live NSE large-cap universe for Indian equity research",
+                "source": "live",
+            }
+        ]
+    }
 
 
 @app.get("/factors")
 def factors() -> dict[str, list[dict]]:
-    return {"factors": demo.FACTORS}
+    demo_only = {"quality_score", "value_score"}
+    return {"factors": [factor for factor in demo.FACTORS if factor["id"] not in demo_only]}
 
 
 @app.get("/benchmarks")
 def benchmarks() -> dict[str, list[dict]]:
-    return {"benchmarks": demo.BENCHMARKS}
+    return {
+        "benchmarks": [
+            {
+                **demo.BENCHMARKS[0],
+                "name": "Nifty 50",
+                "source": "live",
+            }
+        ]
+    }
 
 
 @app.get("/mutual-funds/search")
-def mutual_fund_search(query: str | None = None, source: str = "demo") -> dict[str, list[dict]]:
-    if source == "live":
-        try:
-            return {"results": live.search_mutual_funds(query)}
-        except Exception:
-            return {"results": demo.search_mutual_funds(query)}
-    return {"results": demo.search_mutual_funds(query)}
+def mutual_fund_search(query: str | None = None, source: str = "live") -> dict[str, list[dict]]:
+    if source == "demo":
+        return {"results": demo.search_mutual_funds(query)}
+    try:
+        return {"results": live.search_mutual_funds(query)}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail={"code": "PROVIDER_FAILURE", "message": str(exc)}) from exc
 
 
 @app.post("/backtests")
@@ -55,6 +73,8 @@ def backtests(request: BacktestRequest) -> BacktestResponse:
         result = run_backtest(request)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail={"code": "INVALID_BACKTEST_REQUEST", "message": str(exc)}) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail={"code": "PROVIDER_FAILURE", "message": str(exc)}) from exc
     BACKTESTS[result.id] = result
     return result
 

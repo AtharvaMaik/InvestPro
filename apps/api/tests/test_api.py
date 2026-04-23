@@ -16,9 +16,12 @@ def test_metadata_endpoints():
     universes = client.get("/universes").json()["universes"]
     assert universes
     assert universes[0]["symbolCount"] >= 40
+    assert universes[0]["source"] == "live"
+    assert "Demo" not in universes[0]["name"]
     assert client.get("/factors").json()["factors"]
-    assert client.get("/benchmarks").json()["benchmarks"]
-    assert client.get("/mutual-funds/search").json()["results"]
+    benchmarks = client.get("/benchmarks").json()["benchmarks"]
+    assert benchmarks[0]["source"] == "live"
+    assert client.get("/mutual-funds/search").json()["results"][0]["source"] == "mfapi"
 
 
 def test_default_mutual_fund_menu_has_multiple_categories():
@@ -141,6 +144,8 @@ def test_backtest_quant_v2_outputs_risk_fundamental_and_validation_sections():
     assert body["rollingAnalysis"]["oneYearWinRate"] is not None
     assert body["walkForward"]["train"]["metrics"]["cagr"] is not None
     assert body["walkForward"]["test"]["metrics"]["cagr"] is not None
+    assert body["actionList"]
+    assert body["actionList"][0]["action"] in {"buy_candidate", "hold", "review", "avoid"}
 
 
 def test_backtest_v3_decision_layer_returns_verdict_guardrails_and_journal():
@@ -191,10 +196,12 @@ def test_factor_metadata_includes_fundamental_factors():
     response = client.get("/factors")
     assert response.status_code == 200
     factor_ids = {factor["id"] for factor in response.json()["factors"]}
-    assert {"quality_score", "value_score", "roe", "roce", "debt_to_equity", "earnings_growth", "pe_ratio", "pb_ratio"}.issubset(factor_ids)
+    assert {"roe", "roce", "debt_to_equity", "earnings_growth", "pe_ratio", "pb_ratio"}.issubset(factor_ids)
+    assert "quality_score" not in factor_ids
+    assert "value_score" not in factor_ids
 
 
-def test_backtest_live_source_falls_back_to_demo_when_provider_fails(monkeypatch):
+def test_backtest_live_source_reports_provider_failure(monkeypatch):
     from app.quant import backtest
 
     def fail_price_data(*_args, **_kwargs):
@@ -216,10 +223,8 @@ def test_backtest_live_source_falls_back_to_demo_when_provider_fails(monkeypatch
         "mutualFunds": ["ppfas-flexi-demo"],
     }
     response = client.post("/backtests", json=payload)
-    assert response.status_code == 200
-    body = response.json()
-    assert body["status"] == "completed"
-    assert any(warning["code"] == "LIVE_DATA_FALLBACK" for warning in body["warnings"])
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "PROVIDER_FAILURE"
 
 
 def test_missing_backtest_returns_404():

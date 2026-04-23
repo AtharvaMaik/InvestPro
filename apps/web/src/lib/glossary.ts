@@ -1,6 +1,6 @@
 export const glossary = {
   dataSource:
-    "Demo uses seeded local data so the app always works. Live fetches NSE-style Yahoo Finance prices and MFAPI mutual fund NAVs, then falls back with warnings if a provider fails.",
+    "The app-facing workflow uses live NSE-style Yahoo Finance prices and MFAPI mutual fund NAVs. Provider failures are shown as errors instead of being replaced with seeded data.",
   universe: "The group of stocks the strategy is allowed to rank and choose from.",
   dateRange: "The historical period used for ranking, rebalancing, and calculating performance.",
   topN: "The number of highest-ranked stocks the strategy holds after each monthly rebalance.",

@@ -125,6 +125,7 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
     investability = _investability_snapshot(request, holdings, strategy_metrics, _sector_exposure(holdings))
     risk_budget = _risk_budget_snapshot(strategy_metrics, comparisons, _sector_exposure(holdings))
     research_verdict = _research_verdict(data_confidence, investability, risk_budget, walk_forward, holdings)
+    action_list = _action_list(holdings, data_confidence)
 
     return BacktestResponse(
         id=f"bt_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
@@ -158,6 +159,7 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
         riskBudget=risk_budget,
         researchVerdict=research_verdict,
         rebalanceJournal=rebalance_journal,
+        actionList=action_list,
         warnings=warnings,
     )
 
@@ -171,13 +173,7 @@ def _price_data(request: BacktestRequest, warnings: list[WarningMessage]) -> pd.
     try:
         return live.price_data(symbols, request.startDate, request.endDate)
     except Exception as exc:
-        warnings.append(
-            WarningMessage(
-                code="LIVE_DATA_FALLBACK",
-                message=f"Live stock data could not be fetched, so seeded demo prices were used instead. Reason: {exc}",
-            )
-        )
-        return demo.price_data()
+        raise RuntimeError(f"Live stock prices could not be fetched. Reason: {exc}") from exc
 
 
 def _fundamentals(request: BacktestRequest, symbols: list[str], warnings: list[WarningMessage]) -> pd.DataFrame:
@@ -197,13 +193,7 @@ def _fundamentals(request: BacktestRequest, symbols: list[str], warnings: list[W
             )
         return frame
     except Exception as exc:
-        warnings.append(
-            WarningMessage(
-                code="LIVE_FUNDAMENTALS_FALLBACK",
-                message=f"Live fundamentals could not be fetched, so seeded fundamentals were used for sector and fundamental factors. Reason: {exc}",
-            )
-        )
-        return demo.fundamentals()
+        raise RuntimeError(f"Live fundamentals could not be fetched. Reason: {exc}") from exc
 
 
 def _rebalance_dates(index: pd.DatetimeIndex, frequency: str) -> list[pd.Timestamp]:
@@ -783,6 +773,53 @@ def _research_verdict(data_confidence: dict, investability: dict, risk_budget: d
     return {"status": status, "reasons": reasons}
 
 
+def _action_list(holdings: list[dict], data_confidence: dict) -> list[dict]:
+    latest = holdings[-1]["symbols"] if holdings else []
+    actions = []
+    for holding in latest:
+        scores = holding.get("factorScores", {})
+        composite = holding.get("compositeScore", 0)
+        trend = scores.get("trend_200d", 0)
+        drawdown = scores.get("drawdown_6m", 0)
+        liquidity = scores.get("liquidity_3m", 0)
+        if data_confidence.get("level") == "low" or trend < -0.75 or drawdown < -1.0:
+            action = "review"
+        elif composite >= 0.75 and trend >= 0 and drawdown >= -0.5:
+            action = "buy_candidate"
+        elif composite >= 0:
+            action = "hold"
+        else:
+            action = "review"
+        if liquidity < -1.5:
+            action = "avoid"
+        actions.append(
+            {
+                "symbol": holding["symbol"],
+                "sector": holding.get("sector", "Unknown"),
+                "action": action,
+                "weight": holding.get("weight", 0),
+                "compositeScore": composite,
+                "reason": _action_reason(action, composite, trend, drawdown, liquidity),
+            }
+        )
+    order = {"buy_candidate": 0, "hold": 1, "review": 2, "avoid": 3}
+    return sorted(actions, key=lambda item: (order[item["action"]], -item["compositeScore"]))
+
+
+def _action_reason(action: str, composite: float, trend: float, drawdown: float, liquidity: float) -> str:
+    if action == "buy_candidate":
+        return "Strong composite rank with acceptable trend and drawdown profile."
+    if action == "hold":
+        return "Selected by the model, but factor evidence is moderate rather than exceptional."
+    if action == "avoid":
+        return "Selected rank is weakened by poor liquidity, so execution risk is high."
+    if trend < -0.75:
+        return "Review because trend evidence is weak despite selection."
+    if drawdown < -1.0:
+        return "Review because recent drawdown evidence is weak despite selection."
+    return f"Review because composite score is {composite:.2f}, trend score is {trend:.2f}, and drawdown score is {drawdown:.2f}."
+
+
 def _check(name: str, passed: bool, detail: str) -> dict:
     return {"name": name, "status": "pass" if passed else "fail", "detail": detail}
 
@@ -802,14 +839,7 @@ def _benchmark_series(request: BacktestRequest, warnings: list[WarningMessage]) 
     try:
         return live.benchmark_series(request.startDate, request.endDate)
     except Exception as exc:
-        _append_once(
-            warnings,
-            WarningMessage(
-                code="LIVE_BENCHMARK_FALLBACK",
-                message=f"Live Nifty benchmark data could not be fetched, so demo benchmark data was used. Reason: {exc}",
-            ),
-        )
-        return demo.benchmark_series()
+        raise RuntimeError(f"Live Nifty benchmark data could not be fetched. Reason: {exc}") from exc
 
 
 def _mutual_fund_navs(request: BacktestRequest, warnings: list[WarningMessage]) -> dict[str, pd.Series]:
@@ -818,14 +848,7 @@ def _mutual_fund_navs(request: BacktestRequest, warnings: list[WarningMessage]) 
     try:
         return live.mutual_fund_navs(request.mutualFunds)
     except Exception as exc:
-        _append_once(
-            warnings,
-            WarningMessage(
-                code="LIVE_MUTUAL_FUND_FALLBACK",
-                message=f"Live mutual fund NAV data could not be fetched, so demo NAV data was used. Reason: {exc}",
-            ),
-        )
-        return demo.mutual_fund_navs()
+        raise RuntimeError(f"Live mutual fund NAV data could not be fetched. Reason: {exc}") from exc
 
 
 def _append_once(warnings: list[WarningMessage], warning: WarningMessage) -> None:
