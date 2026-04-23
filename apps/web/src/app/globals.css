@@ -83,6 +83,32 @@ button:disabled {
   text-decoration: none;
 }
 
+.auth-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.auth-box input {
+  width: 118px;
+  min-height: 34px;
+}
+
+.auth-box button {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--accent-strong);
+  padding: 0 10px;
+  font-weight: 900;
+}
+
+.auth-box.signed-in span {
+  color: var(--ink);
+  font-weight: 800;
+}
+
 .builder-panel,
 .chart-panel,
 .metric-card,
@@ -1299,6 +1325,18 @@ th {
   .app-topbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .app-topbar div,
+  .auth-box {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .auth-box input,
+  .auth-box button {
+    width: 100%;
   }
 
   .panel-title {

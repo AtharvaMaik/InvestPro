@@ -70,6 +70,11 @@ class TradesCsvExportRequest(BaseModel):
     trades: list[dict]
 
 
+class LoginRequest(BaseModel):
+    email: str
+    name: str = "Investor"
+
+
 class ComparisonResult(BaseModel):
     id: str
     name: str

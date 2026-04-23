@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.data import demo, live
-from app.models import BacktestRequest, BacktestResponse, CsvImportRequest, TradesCsvExportRequest
+from app.core.auth import create_session_token, verify_session_token
+from app.models import BacktestRequest, BacktestResponse, CsvImportRequest, LoginRequest, TradesCsvExportRequest
 from app.portfolio.csv_io import export_trades_csv, parse_holdings_csv
 from app.quant.backtest import run_backtest
 
@@ -23,6 +24,23 @@ BACKTESTS: dict[str, BacktestResponse] = {}
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "investpro-api", "version": "0.1.0"}
+
+
+@app.post("/auth/login")
+def login(request: LoginRequest) -> dict[str, str]:
+    if "@" not in request.email:
+        raise HTTPException(status_code=422, detail={"code": "INVALID_EMAIL", "message": "Enter a valid email address."})
+    token = create_session_token(request.email, request.name)
+    return {"token": token, "email": request.email.strip().lower(), "name": request.name.strip() or "Investor"}
+
+
+@app.get("/me")
+def me(authorization: str | None = Header(default=None)) -> dict[str, str]:
+    token = _bearer_token(authorization)
+    user = verify_session_token(token) if token else None
+    if not user:
+        raise HTTPException(status_code=401, detail={"code": "UNAUTHORIZED", "message": "Sign in is required."})
+    return {"email": user["email"], "name": user["name"]}
 
 
 @app.get("/universes")
@@ -114,3 +132,12 @@ def get_backtest(backtest_id: str) -> BacktestResponse:
             detail={"code": "BACKTEST_NOT_FOUND", "message": f"No backtest exists for id {backtest_id}."},
         )
     return BACKTESTS[backtest_id]
+
+
+def _bearer_token(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return None
+    return token

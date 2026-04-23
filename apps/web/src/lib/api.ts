@@ -50,6 +50,12 @@ export type CsvImportResult = {
   warnings: Array<{ code: string; message: string }>;
 };
 
+export type AuthSession = {
+  token: string;
+  email: string;
+  name: string;
+};
+
 export type BacktestRequest = {
   dataSource: "demo" | "live";
   universeId: string;
@@ -346,4 +352,27 @@ export async function exportTradesCsv(trades: BacktestResponse["rebalanceTrades"
     throw new Error(`Trade export failed: ${response.status}`);
   }
   return response.text();
+}
+
+export async function login(email: string, name: string): Promise<AuthSession> {
+  const response = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, name })
+  });
+  if (!response.ok) {
+    throw new Error("Sign in failed.");
+  }
+  return response.json() as Promise<AuthSession>;
+}
+
+export async function getMe(token: string): Promise<Omit<AuthSession, "token">> {
+  const response = await fetch(`${API_BASE}/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store"
+  });
+  if (!response.ok) {
+    throw new Error("Session expired.");
+  }
+  return response.json() as Promise<Omit<AuthSession, "token">>;
 }

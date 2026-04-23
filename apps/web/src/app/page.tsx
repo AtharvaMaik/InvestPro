@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { AuthButtons } from "@/components/auth-buttons";
 import { ResultsDashboard } from "@/components/results-dashboard";
 import { StrategyBuilder } from "@/components/strategy-builder";
 import type { BacktestRequest, BacktestResponse, Benchmark, FactorMeta, MutualFund, StockOption, Universe } from "@/lib/api";
@@ -106,6 +107,7 @@ export default function Home() {
         <div>
           <span>Live research mode</span>
           <Link href="/guide">Factor guide</Link>
+          <AuthButtons />
         </div>
       </nav>
       {metadata && config ? (
