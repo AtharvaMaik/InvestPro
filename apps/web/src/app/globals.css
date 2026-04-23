@@ -595,8 +595,12 @@ select:focus {
 
 .holding-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 92px 82px auto;
+  grid-template-columns: minmax(0, 1fr) 90px 78px 86px auto;
   gap: 6px;
+}
+
+.holding-notes {
+  grid-column: 1 / -1;
 }
 
 .holding-row button,
@@ -936,6 +940,40 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
+}
+
+.portfolio-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.portfolio-summary-tile {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.portfolio-summary-tile span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.portfolio-summary-tile strong {
+  font-size: 1.18rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.portfolio-summary-tile.good strong,
+.positive-text {
+  color: #166534;
+}
+
+.portfolio-summary-tile.bad strong,
+.negative-text {
+  color: #991b1b;
 }
 
 .mini-metrics div {

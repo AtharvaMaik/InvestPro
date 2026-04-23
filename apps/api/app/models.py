@@ -15,6 +15,8 @@ class CurrentHolding(BaseModel):
     symbol: str
     value: float | None = Field(default=None, ge=0)
     shares: float | None = Field(default=None, ge=0)
+    averageCost: float | None = Field(default=None, ge=0)
+    notes: str | None = None
 
 
 class BacktestRequest(BaseModel):
@@ -92,5 +94,7 @@ class BacktestResponse(BaseModel):
     actionList: list[dict] = Field(default_factory=list)
     allocationPlan: list[dict] = Field(default_factory=list)
     rebalanceTrades: list[dict] = Field(default_factory=list)
+    portfolioSummary: dict = Field(default_factory=dict)
+    trackedHoldings: list[dict] = Field(default_factory=list)
     executionChecklist: list[dict] = Field(default_factory=list)
     warnings: list[WarningMessage]

@@ -220,8 +220,8 @@ def test_backtest_v4_returns_allocation_trades_and_execution_checklist():
         "maxAnnualTurnover": 3.0,
         "portfolioCapital": 500000,
         "currentHoldings": [
-            {"symbol": "RELIANCE.NS", "value": 100000},
-            {"symbol": "TCS.NS", "shares": 5},
+            {"symbol": "RELIANCE.NS", "value": 100000, "shares": 10, "averageCost": 1800},
+            {"symbol": "TCS.NS", "shares": 5, "averageCost": 3000},
             {"symbol": "LEGACY.NS", "value": 25000},
         ],
         "factors": [
@@ -244,6 +244,10 @@ def test_backtest_v4_returns_allocation_trades_and_execution_checklist():
     assert body["allocationPlan"]
     assert all("targetValue" in row and "estimatedShares" in row for row in body["allocationPlan"])
     assert body["rebalanceTrades"]
+    assert body["portfolioSummary"]["currentValue"] > 0
+    assert body["portfolioSummary"]["unrealizedPnl"] is not None
+    assert body["trackedHoldings"]
+    assert all("drift" in holding and "driftValue" in holding for holding in body["trackedHoldings"])
     trade_actions = {trade["tradeAction"] for trade in body["rebalanceTrades"]}
     assert "exit" in trade_actions
     assert trade_actions.intersection({"buy", "add", "trim", "hold", "avoid"})

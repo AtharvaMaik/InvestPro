@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { InfoButton } from "@/components/info-button";
+import { PortfolioTracker } from "@/components/portfolio-tracker";
 import type { BacktestResponse, MetricSet } from "@/lib/api";
 import { glossary } from "@/lib/glossary";
 
@@ -100,6 +101,8 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
           <MetricCard key={key} description={description} label={label} value={formatNumber(result.metrics.strategy[key])} />
         ))}
       </div>
+
+      <PortfolioTracker result={result} />
 
       <div className="chart-panel wide">
         <div className="panel-title">

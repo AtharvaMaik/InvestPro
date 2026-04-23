@@ -6,6 +6,7 @@ import pandas as pd
 
 from app.data import demo, live
 from app.models import BacktestRequest, BacktestResponse, ComparisonResult, WarningMessage
+from app.portfolio.tracking import attach_allocation_drift, summarize_portfolio
 from app.quant.factors import (
     average_traded_value,
     composite_scores,
@@ -128,6 +129,8 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
     action_list = _action_list(holdings, data_confidence)
     latest_prices = _latest_prices(close)
     allocation_plan = _allocation_plan(holdings, latest_prices, request.portfolioCapital)
+    portfolio_summary = summarize_portfolio([holding.model_dump(mode="json") for holding in request.currentHoldings], latest_prices, cash_value=0)
+    tracked_holdings = attach_allocation_drift(portfolio_summary["holdings"], allocation_plan, request.portfolioCapital)
     rebalance_trades = _rebalance_trades(request, allocation_plan, latest_prices, action_list)
     execution_checklist = _execution_checklist(data_confidence, investability, research_verdict, strategy_metrics, request)
 
@@ -166,6 +169,8 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
         actionList=action_list,
         allocationPlan=allocation_plan,
         rebalanceTrades=rebalance_trades,
+        portfolioSummary=portfolio_summary,
+        trackedHoldings=tracked_holdings,
         executionChecklist=execution_checklist,
         warnings=warnings,
     )

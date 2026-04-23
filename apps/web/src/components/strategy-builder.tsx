@@ -50,7 +50,7 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, s
     onChange(applyPreset(config, preset));
   }
 
-  function updateHolding(index: number, patch: Partial<{ symbol: string; value: number | null; shares: number | null }>) {
+  function updateHolding(index: number, patch: Partial<{ symbol: string; value: number | null; shares: number | null; averageCost: number | null; notes: string | null }>) {
     update({
       currentHoldings: config.currentHoldings.map((holding, position) => (position === index ? { ...holding, ...patch } : holding))
     });
@@ -59,7 +59,7 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, s
   function addSelectedHolding() {
     const stock = selectedStock ?? filteredStocks[0];
     if (!stock) return;
-    update({ currentHoldings: [...config.currentHoldings, { symbol: stock.symbol, value: 0, shares: null }] });
+    update({ currentHoldings: [...config.currentHoldings, { symbol: stock.symbol, value: 0, shares: null, averageCost: null, notes: "" }] });
     setHoldingSearch("");
   }
 
@@ -308,7 +308,22 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, s
                 value={holding.shares ?? ""}
                 onChange={(event) => updateHolding(index, { shares: event.target.value ? Number(event.target.value) : null })}
               />
+              <input
+                aria-label="Average cost"
+                min="0"
+                placeholder="Avg cost"
+                type="number"
+                value={holding.averageCost ?? ""}
+                onChange={(event) => updateHolding(index, { averageCost: event.target.value ? Number(event.target.value) : null })}
+              />
               <button type="button" onClick={() => update({ currentHoldings: config.currentHoldings.filter((_item, position) => position !== index) })}>Remove</button>
+              <input
+                aria-label="Holding notes"
+                className="holding-notes"
+                placeholder="Optional note"
+                value={holding.notes ?? ""}
+                onChange={(event) => updateHolding(index, { notes: event.target.value })}
+              />
             </div>
           ))}
         </div>

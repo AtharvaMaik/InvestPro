@@ -54,7 +54,7 @@ export type BacktestRequest = {
   minLiquidityCrore: number;
   maxAnnualTurnover: number;
   portfolioCapital: number;
-  currentHoldings: Array<{ symbol: string; value?: number | null; shares?: number | null }>;
+  currentHoldings: Array<{ symbol: string; value?: number | null; shares?: number | null; averageCost?: number | null; notes?: string | null }>;
   factors: { id: string; weight: number }[];
   benchmarks: string[];
   mutualFunds: string[];
@@ -197,6 +197,17 @@ export type BacktestResponse = {
     estimatedShares: number | null;
     reason: string;
   }>;
+  portfolioSummary: {
+    cashValue: number;
+    currentValue: number;
+    investedValue: number;
+    costBasis: number | null;
+    unrealizedPnl: number | null;
+    unrealizedPnlPercent: number | null;
+    holdingCount: number;
+    holdings: TrackedHolding[];
+  };
+  trackedHoldings: TrackedHolding[];
   executionChecklist: Array<{ name: string; status: "pass" | "block"; detail: string }>;
   holdings: Array<{
     rebalanceDate: string;
@@ -210,6 +221,25 @@ export type BacktestResponse = {
     }>;
   }>;
   warnings: Array<{ code: string; message: string }>;
+};
+
+export type TrackedHolding = {
+  symbol: string;
+  sector?: string;
+  shares?: number | null;
+  averageCost?: number | null;
+  latestPrice?: number | null;
+  currentValue: number;
+  currentValueSource?: string;
+  costBasis?: number | null;
+  unrealizedPnl?: number | null;
+  unrealizedPnlPercent?: number | null;
+  currentWeight: number;
+  targetWeight?: number;
+  targetValue?: number;
+  drift?: number;
+  driftValue?: number;
+  notes?: string | null;
 };
 
 export type JournalSymbol = {
