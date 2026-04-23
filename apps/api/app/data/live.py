@@ -22,6 +22,62 @@ CURATED_MUTUAL_FUNDS = [
         "category": "Flexi Cap",
         "source": "mfapi",
     },
+    {
+        "schemeCode": "118825",
+        "schemeName": "Mirae Asset Large Cap Fund - Direct Plan - Growth",
+        "fundHouse": "Mirae Asset Mutual Fund",
+        "category": "Large Cap",
+        "source": "mfapi",
+    },
+    {
+        "schemeCode": "118777",
+        "schemeName": "Nippon India Small Cap Fund - Direct Plan Growth Plan - Bonus Option",
+        "fundHouse": "Nippon India Mutual Fund",
+        "category": "Small Cap",
+        "source": "mfapi",
+    },
+    {
+        "schemeCode": "120828",
+        "schemeName": "quant Small Cap Fund - Growth Option - Direct Plan",
+        "fundHouse": "quant Mutual Fund",
+        "category": "Small Cap",
+        "source": "mfapi",
+    },
+    {
+        "schemeCode": "127042",
+        "schemeName": "Motilal Oswal Midcap Fund - Direct Plan - Growth Option",
+        "fundHouse": "Motilal Oswal Mutual Fund",
+        "category": "Mid Cap",
+        "source": "mfapi",
+    },
+    {
+        "schemeCode": "119060",
+        "schemeName": "HDFC ELSS Tax saver - Growth Option - Direct Plan",
+        "fundHouse": "HDFC Mutual Fund",
+        "category": "ELSS",
+        "source": "mfapi",
+    },
+    {
+        "schemeCode": "120716",
+        "schemeName": "UTI Nifty 50 Index Fund - Growth Option - Direct",
+        "fundHouse": "UTI Mutual Fund",
+        "category": "Index",
+        "source": "mfapi",
+    },
+    {
+        "schemeCode": "119063",
+        "schemeName": "HDFC Nifty 50 Index Fund - Direct Plan",
+        "fundHouse": "HDFC Mutual Fund",
+        "category": "Index",
+        "source": "mfapi",
+    },
+    {
+        "schemeCode": "120620",
+        "schemeName": "ICICI Prudential Nifty 50 Index Fund - Direct Plan Cumulative Option",
+        "fundHouse": "ICICI Prudential Mutual Fund",
+        "category": "Index",
+        "source": "mfapi",
+    },
 ]
 
 

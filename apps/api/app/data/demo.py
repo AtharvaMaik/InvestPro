@@ -112,6 +112,62 @@ MUTUAL_FUNDS = [
         "category": "Flexi Cap",
         "source": "demo",
     },
+    {
+        "schemeCode": "mirae-large-demo",
+        "schemeName": "Mirae Asset Large Cap Fund Demo",
+        "fundHouse": "Mirae Asset Mutual Fund",
+        "category": "Large Cap",
+        "source": "demo",
+    },
+    {
+        "schemeCode": "nippon-small-demo",
+        "schemeName": "Nippon India Small Cap Fund Demo",
+        "fundHouse": "Nippon India Mutual Fund",
+        "category": "Small Cap",
+        "source": "demo",
+    },
+    {
+        "schemeCode": "quant-small-demo",
+        "schemeName": "quant Small Cap Fund Demo",
+        "fundHouse": "quant Mutual Fund",
+        "category": "Small Cap",
+        "source": "demo",
+    },
+    {
+        "schemeCode": "motilal-midcap-demo",
+        "schemeName": "Motilal Oswal Midcap Fund Demo",
+        "fundHouse": "Motilal Oswal Mutual Fund",
+        "category": "Mid Cap",
+        "source": "demo",
+    },
+    {
+        "schemeCode": "hdfc-elss-demo",
+        "schemeName": "HDFC ELSS Tax Saver Fund Demo",
+        "fundHouse": "HDFC Mutual Fund",
+        "category": "ELSS",
+        "source": "demo",
+    },
+    {
+        "schemeCode": "uti-nifty50-demo",
+        "schemeName": "UTI Nifty 50 Index Fund Demo",
+        "fundHouse": "UTI Mutual Fund",
+        "category": "Index",
+        "source": "demo",
+    },
+    {
+        "schemeCode": "hdfc-nifty50-demo",
+        "schemeName": "HDFC Nifty 50 Index Fund Demo",
+        "fundHouse": "HDFC Mutual Fund",
+        "category": "Index",
+        "source": "demo",
+    },
+    {
+        "schemeCode": "icici-nifty50-demo",
+        "schemeName": "ICICI Prudential Nifty 50 Index Fund Demo",
+        "fundHouse": "ICICI Prudential Mutual Fund",
+        "category": "Index",
+        "source": "demo",
+    },
 ]
 
 

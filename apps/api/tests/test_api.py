@@ -19,6 +19,15 @@ def test_metadata_endpoints():
     assert client.get("/mutual-funds/search").json()["results"]
 
 
+def test_default_mutual_fund_menu_has_multiple_categories():
+    response = client.get("/mutual-funds/search")
+    assert response.status_code == 200
+    results = response.json()["results"]
+    categories = {fund["category"] for fund in results}
+    assert len(results) >= 8
+    assert {"Flexi Cap", "Large Cap", "Small Cap", "Mid Cap", "ELSS", "Index"}.issubset(categories)
+
+
 def test_live_mutual_fund_search_uses_live_provider(monkeypatch):
     from app import main
 
