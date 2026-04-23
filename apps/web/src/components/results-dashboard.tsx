@@ -61,9 +61,22 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
 
   const latestHoldings = result.holdings.at(-1)?.symbols ?? [];
   const mutualFundKey = result.comparisons.find((item) => item.type === "mutual_fund")?.id;
+  const latestJournal = result.rebalanceJournal.at(-1);
 
   return (
     <motion.section className="results-grid" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.22 }}>
+      <div className={`verdict-panel ${result.researchVerdict.status}`}>
+        <div>
+          <span className="eyebrow label-with-info">Research Verdict <InfoButton label="research verdict" description={glossary.researchVerdict} /></span>
+          <h2>{formatVerdict(result.researchVerdict.status)}</h2>
+        </div>
+        <div className="verdict-reasons">
+          {result.researchVerdict.reasons.map((reason) => (
+            <p key={reason}>{reason}</p>
+          ))}
+        </div>
+      </div>
+
       <div className="metrics-grid">
         {percentMetrics.map(([key, label, description]) => (
           <MetricCard key={key} description={description} label={label} value={formatPercent(result.metrics.strategy[key])} />
@@ -255,6 +268,64 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
         )}
       </div>
 
+      <div className="chart-panel">
+        <div className="panel-title">
+          <h2 className="label-with-info">Data Confidence <InfoButton label="data confidence" description={glossary.dataConfidence} /></h2>
+          <span>{result.dataConfidence.level}</span>
+        </div>
+        <div className="mini-metrics">
+          <div><span>Confidence</span><strong>{formatPercent(result.dataConfidence.score)}</strong></div>
+          <div><span>Prices</span><strong>{formatPercent(result.dataConfidence.priceCoverage)}</strong></div>
+          <div><span>Fundamentals</span><strong>{formatPercent(result.dataConfidence.fundamentalCoverage)}</strong></div>
+          <div><span>Factors</span><strong>{formatPercent(result.dataConfidence.factorCoverage)}</strong></div>
+        </div>
+      </div>
+
+      <div className="chart-panel">
+        <div className="panel-title">
+          <h2 className="label-with-info">Investability <InfoButton label="investability" description={glossary.investability} /></h2>
+          <span>{result.investability.verdict.replace("_", " ")}</span>
+        </div>
+        <div className="check-list">
+          {result.investability.checks.map((check) => (
+            <div className={`check-row ${check.status}`} key={check.name}>
+              <strong>{check.status}</strong>
+              <span>{formatFactorName(check.name)}</span>
+              <p>{check.detail}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="chart-panel">
+        <div className="panel-title">
+          <h2 className="label-with-info">Risk Budget <InfoButton label="risk budget" description={glossary.riskBudget} /></h2>
+          <span>{result.riskBudget.riskLevel}</span>
+        </div>
+        <div className="mini-metrics">
+          <div><span>Strategy vol</span><strong>{formatPercent(result.riskBudget.volatility)}</strong></div>
+          <div><span>Benchmark vol</span><strong>{formatPercent(result.riskBudget.benchmarkVolatility)}</strong></div>
+          <div><span>Max DD</span><strong>{formatPercent(result.riskBudget.maxDrawdown)}</strong></div>
+          <div><span>Largest sector</span><strong>{formatPercent(result.riskBudget.maxSectorWeight)}</strong></div>
+        </div>
+      </div>
+
+      <div className="chart-panel">
+        <div className="panel-title">
+          <h2 className="label-with-info">Rebalance Journal <InfoButton label="rebalance journal" description={glossary.rebalanceJournal} /></h2>
+          <span>{latestJournal?.rebalanceDate ?? "n/a"}</span>
+        </div>
+        {latestJournal ? (
+          <div className="journal-grid">
+            <JournalColumn title="Added" rows={latestJournal.added.map((item) => ({ symbol: item.symbol, detail: item.reason }))} />
+            <JournalColumn title="Removed" rows={latestJournal.removed.map((item) => ({ symbol: item.symbol, detail: item.reason }))} />
+            <JournalColumn title="Retained" rows={latestJournal.retained.slice(0, 5).map((item) => ({ symbol: item.symbol, detail: item.reason }))} />
+          </div>
+        ) : (
+          <p>No rebalance journal is available.</p>
+        )}
+      </div>
+
       <div className="chart-panel wide">
         <div className="panel-title">
           <h2 className="label-with-info">Latest Holdings <InfoButton label="holdings" description={glossary.holdings} /></h2>
@@ -372,6 +443,20 @@ function MetricCard({ description, label, value }: { description: string; label:
   );
 }
 
+function JournalColumn({ title, rows }: { title: string; rows: Array<{ symbol: string; detail: string }> }) {
+  return (
+    <div className="journal-column">
+      <strong>{title}</strong>
+      {rows.length ? rows.map((row) => (
+        <div key={`${title}-${row.symbol}`}>
+          <span>{row.symbol}</span>
+          <p>{row.detail}</p>
+        </div>
+      )) : <p>No names</p>}
+    </div>
+  );
+}
+
 function formatPercent(value: number | null | undefined) {
   if (value === null || value === undefined || Number.isNaN(value)) return "n/a";
   return `${(value * 100).toFixed(1)}%`;
@@ -387,4 +472,10 @@ function formatFactorName(value: string) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function formatVerdict(value: "pass" | "watch" | "reject") {
+  if (value === "pass") return "Research Pass";
+  if (value === "watch") return "Watch Closely";
+  return "Reject For Now";
 }

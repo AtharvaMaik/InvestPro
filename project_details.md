@@ -519,6 +519,75 @@ DrawdownDegradation = TestMaxDrawdown - TrainMaxDrawdown
 
 This is validation, not automatic optimization. It helps identify strategies that look strong only in the full fitted period.
 
+### 6.8 V3 Decision Layer
+
+V3 adds interpretation fields after the quantitative backtest is complete. These fields do not alter historical returns; they help the user judge whether the research output is trustworthy and investable.
+
+#### Data Confidence
+
+```text
+DataConfidenceScore =
+  0.40 * PriceCoverage
++ 0.25 * FundamentalCoverage
++ 0.35 * FactorCoverage
+- FallbackPenalty
+- DemoPenalty
+```
+
+Confidence levels:
+
+- `high`: score >= 0.80.
+- `medium`: score >= 0.55 and < 0.80.
+- `low`: score < 0.55.
+
+`PriceCoverage` is the share of requested symbols with price data. `FundamentalCoverage` is the non-missing share of fundamental fields. `FactorCoverage` is the average share of symbols with computable selected factors across rebalance dates.
+
+#### Investability
+
+V3 checks:
+
+- largest position weight <= `maxPositionWeight`
+- annual turnover <= `maxAnnualTurnover`
+- largest sector weight <= `maxSectorWeight` when sector caps are enabled
+- latest holdings count is reasonably close to the target holding count
+
+The investability verdict is:
+
+- `investable` when no checks fail.
+- `watch` when one or two checks fail.
+- `not_investable` when more than two checks fail.
+
+#### Risk Budget
+
+Risk level is derived from annualized volatility and maximum drawdown:
+
+- `conservative`: max drawdown <= 18% and volatility <= 18%.
+- `balanced`: max drawdown <= 28% and volatility <= 25%.
+- `aggressive`: max drawdown <= 40% and volatility <= 35%.
+- `speculative`: anything above those limits.
+
+The response also includes benchmark volatility and largest sector exposure for context.
+
+#### Research Verdict
+
+The final research verdict is:
+
+- `pass`: data confidence is acceptable, investability passes, risk is not speculative, walk-forward is complete.
+- `watch`: the strategy is interpretable but has concerns.
+- `reject`: data confidence is low, no holdings are produced, investability fails materially, or risk is too high.
+
+The verdict is a research summary, not a buy or sell recommendation.
+
+#### Rebalance Journal
+
+Every rebalance journal entry records:
+
+- `added`: stocks entering the selected portfolio.
+- `removed`: stocks leaving the selected portfolio.
+- `retained`: stocks still held.
+- `turnover`: one-way turnover caused by the rebalance.
+- `reason`: strongest factor drivers for added and retained names.
+
 ## 7. API Specification
 
 All backend responses use JSON. Dates use ISO `YYYY-MM-DD`.

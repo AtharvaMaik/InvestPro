@@ -148,6 +148,45 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
             onChange={(event) => update({ maxSectorWeight: Number(event.target.value) })}
           />
         </label>
+        <label className="field compact-field">
+          <span className="label-with-info">
+            Max stock weight: {(config.maxPositionWeight * 100).toFixed(0)}% <InfoButton label="max stock weight" description={glossary.maxPositionWeight} />
+          </span>
+          <input
+            type="range"
+            min="0.03"
+            max="0.25"
+            step="0.01"
+            value={config.maxPositionWeight}
+            onChange={(event) => update({ maxPositionWeight: Number(event.target.value) })}
+          />
+        </label>
+        <label className="field compact-field">
+          <span className="label-with-info">
+            Min liquidity: {config.minLiquidityCrore} cr <InfoButton label="minimum liquidity" description={glossary.minLiquidity} />
+          </span>
+          <input
+            type="range"
+            min="0"
+            max="50"
+            step="1"
+            value={config.minLiquidityCrore}
+            onChange={(event) => update({ minLiquidityCrore: Number(event.target.value) })}
+          />
+        </label>
+        <label className="field compact-field">
+          <span className="label-with-info">
+            Turnover budget: {(config.maxAnnualTurnover * 100).toFixed(0)}% <InfoButton label="turnover budget" description={glossary.maxAnnualTurnover} />
+          </span>
+          <input
+            type="range"
+            min="0.5"
+            max="5"
+            step="0.25"
+            value={config.maxAnnualTurnover}
+            onChange={(event) => update({ maxAnnualTurnover: Number(event.target.value) })}
+          />
+        </label>
       </div>
 
       <div className="factor-list">

@@ -12,6 +12,12 @@ export const glossary = {
     "Limits how much of the portfolio can come from one sector so the strategy does not accidentally become all banks, IT, or metals.",
   maxSectorWeight:
     "The maximum portfolio weight allowed in one sector when the sector cap is enabled.",
+  maxPositionWeight:
+    "The maximum desired allocation to a single stock. This is used as a sizing guardrail and investability check.",
+  minLiquidity:
+    "Minimum average daily traded value in INR crore. Raising it removes less liquid stocks from selection.",
+  maxAnnualTurnover:
+    "The highest annualized turnover the investor is comfortable with. Higher turnover can mean more costs, taxes, and operational friction.",
   rebalanceFrequency:
     "How often the portfolio is rebuilt. Monthly reacts faster; quarterly usually lowers turnover and trading friction.",
   weightingMethod:
@@ -38,6 +44,16 @@ export const glossary = {
     "Checks consistency through time instead of relying only on one full-period result.",
   walkForward:
     "Splits history into train and later test windows to show whether the same submitted strategy survives out of sample.",
+  researchVerdict:
+    "A research summary based on data confidence, investability, risk budget, walk-forward validation, and portfolio output.",
+  dataConfidence:
+    "Checks whether price coverage, fundamental coverage, factor coverage, and provider warnings are strong enough to interpret the result.",
+  investability:
+    "Checks whether the portfolio passes position sizing, turnover, sector concentration, and holding-count guardrails.",
+  riskBudget:
+    "Translates volatility, drawdown, and concentration into a plain-language risk band.",
+  rebalanceJournal:
+    "Shows what entered, exited, and stayed in the portfolio at each rebalance, with factor-based reasons.",
   holdings: "The latest stocks selected by the factor model, including weights and factor scores."
   ,
   factorDiagnostics:

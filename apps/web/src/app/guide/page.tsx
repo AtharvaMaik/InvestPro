@@ -3,19 +3,19 @@ import Link from "next/link";
 const v3Items = [
   {
     title: "Data Confidence Layer",
-    body: "Show freshness, missing fundamentals, provider fallbacks, and symbol-level coverage before a user trusts a result."
+    body: "Now part of V3: shows price coverage, fundamental coverage, factor coverage, provider warnings, and an overall confidence level."
   },
   {
     title: "Portfolio Sizing Guardrails",
-    body: "Add max position weight, minimum liquidity, turnover budget, and cash handling so the output is closer to a real deployable portfolio."
+    body: "Now part of V3: checks max stock weight, minimum liquidity, turnover budget, sector concentration, and holding count."
   },
   {
     title: "Risk Budget View",
-    body: "Translate the strategy into expected drawdown, sector exposure, volatility, and benchmark sensitivity before the investor takes action."
+    body: "Now part of V3: translates volatility, drawdown, and concentration into conservative, balanced, aggressive, or speculative risk bands."
   },
   {
     title: "Rebalance Journal",
-    body: "Record why each stock entered, why each stock left, and which factor changed. This makes the strategy auditable."
+    body: "Now part of V3: records which stocks entered, exited, and stayed at each rebalance, with the strongest factor reasons."
   },
   {
     title: "Scenario Tests",
@@ -96,16 +96,16 @@ export default function GuidePage() {
 
       <section className="guide-hero">
         <span className="eyebrow">Quant V3 Roadmap</span>
-        <h1>How to choose factors and use the research responsibly.</h1>
+        <h1>Use InvestPro as a decision-quality research terminal.</h1>
         <p>
-          InvestPro should help an investor ask better questions, compare alternatives, and build evidence. It should not replace personal financial advice, risk profiling, tax planning, or execution discipline.
+          V3 turns a backtest into an auditable research report. The goal is not to chase the highest CAGR; it is to understand whether the data is reliable, the portfolio is investable, the risk is acceptable, and the rebalance decisions make sense.
         </p>
       </section>
 
       <section className="guide-section">
         <div>
           <span className="eyebrow">Ship-ready V3</span>
-          <h2>What I would add before calling this final live version</h2>
+          <h2>What makes the live version feel real</h2>
         </div>
         <div className="guide-card-grid">
           {v3Items.map((item) => (

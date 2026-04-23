@@ -43,6 +43,9 @@ export type BacktestRequest = {
   trendFilter: boolean;
   sectorNeutral: boolean;
   maxSectorWeight: number;
+  maxPositionWeight: number;
+  minLiquidityCrore: number;
+  maxAnnualTurnover: number;
   factors: { id: string; weight: number }[];
   benchmarks: string[];
   mutualFunds: string[];
@@ -125,6 +128,39 @@ export type BacktestResponse = {
     test?: { startDate: string; endDate: string; metrics: MetricSet };
     degradation?: { cagr: number | null; maxDrawdown: number | null };
   };
+  dataConfidence: {
+    level: "high" | "medium" | "low";
+    score: number;
+    priceCoverage: number;
+    fundamentalCoverage: number;
+    factorCoverage: number;
+    source: "demo" | "live";
+    missingSymbols: string[];
+    warningCodes: string[];
+  };
+  investability: {
+    verdict: "investable" | "watch" | "not_investable";
+    checks: Array<{ name: string; status: "pass" | "fail"; detail: string }>;
+  };
+  riskBudget: {
+    riskLevel: "conservative" | "balanced" | "aggressive" | "speculative";
+    volatility: number;
+    benchmarkVolatility: number | null;
+    maxDrawdown: number;
+    maxSectorWeight: number;
+    notes: string[];
+  };
+  researchVerdict: {
+    status: "pass" | "watch" | "reject";
+    reasons: string[];
+  };
+  rebalanceJournal: Array<{
+    rebalanceDate: string;
+    turnover: number;
+    added: Array<JournalSymbol>;
+    removed: Array<{ symbol: string; reason: string }>;
+    retained: Array<JournalSymbol>;
+  }>;
   holdings: Array<{
     rebalanceDate: string;
     turnover: number;
@@ -137,6 +173,14 @@ export type BacktestResponse = {
     }>;
   }>;
   warnings: Array<{ code: string; message: string }>;
+};
+
+export type JournalSymbol = {
+  symbol: string;
+  sector: string;
+  compositeScore: number;
+  reason: string;
+  topFactors: Array<{ factorId: string; score: number }>;
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";

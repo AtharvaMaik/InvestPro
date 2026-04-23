@@ -143,6 +143,50 @@ def test_backtest_quant_v2_outputs_risk_fundamental_and_validation_sections():
     assert body["walkForward"]["test"]["metrics"]["cagr"] is not None
 
 
+def test_backtest_v3_decision_layer_returns_verdict_guardrails_and_journal():
+    payload = {
+        "universeId": "nifty50-demo",
+        "customSymbols": [],
+        "startDate": "2020-01-01",
+        "endDate": "2024-12-31",
+        "rebalanceFrequency": "quarterly",
+        "weightingMethod": "equal",
+        "topN": 15,
+        "transactionCostBps": 25,
+        "trendFilter": True,
+        "sectorNeutral": True,
+        "maxSectorWeight": 0.3,
+        "maxPositionWeight": 0.08,
+        "minLiquidityCrore": 1,
+        "maxAnnualTurnover": 2.0,
+        "factors": [
+            {"id": "momentum_6m", "weight": 0.2},
+            {"id": "relative_momentum_6m", "weight": 0.2},
+            {"id": "drawdown_6m", "weight": 0.15},
+            {"id": "trend_200d", "weight": 0.1},
+            {"id": "roe", "weight": 0.15},
+            {"id": "debt_to_equity", "weight": 0.1},
+            {"id": "pe_ratio", "weight": 0.1},
+        ],
+        "benchmarks": ["nifty50-demo"],
+        "mutualFunds": ["ppfas-flexi-demo", "mirae-large-demo"],
+    }
+
+    response = client.post("/backtests", json=payload)
+    assert response.status_code == 200
+    body = response.json()
+
+    assert body["dataConfidence"]["level"] in {"high", "medium", "low"}
+    assert 0 <= body["dataConfidence"]["score"] <= 1
+    assert body["investability"]["checks"]
+    assert body["investability"]["verdict"] in {"investable", "watch", "not_investable"}
+    assert body["riskBudget"]["riskLevel"] in {"conservative", "balanced", "aggressive", "speculative"}
+    assert body["researchVerdict"]["status"] in {"pass", "watch", "reject"}
+    assert body["researchVerdict"]["reasons"]
+    assert body["rebalanceJournal"]
+    assert {"added", "removed", "retained"}.issubset(body["rebalanceJournal"][-1])
+
+
 def test_factor_metadata_includes_fundamental_factors():
     response = client.get("/factors")
     assert response.status_code == 200

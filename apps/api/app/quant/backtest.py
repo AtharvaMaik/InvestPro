@@ -46,15 +46,20 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
     portfolio_returns = pd.Series(0.0, index=returns.index)
     holdings = []
     diagnostics_samples: list[dict] = []
+    rebalance_journal: list[dict] = []
+    factor_coverage_samples: list[dict] = []
     current_weights = pd.Series(dtype=float)
+    previous_symbols: set[str] = set()
     transaction_cost_rate = request.transactionCostBps / 10000
 
     for position, rebalance_date in enumerate(rebalance_dates):
         next_date = rebalance_dates[position + 1] if position + 1 < len(rebalance_dates) else returns.index[-1]
         factor_scores = _factor_scores(close.loc[:rebalance_date], volume.loc[:rebalance_date], weights, fundamentals, benchmark_prices.loc[:rebalance_date])
+        factor_coverage_samples.append(_factor_coverage(factor_scores, symbols, rebalance_date))
         ranked = composite_scores(factor_scores, weights)
         if request.trendFilter:
             ranked = _apply_trend_filter(ranked, close.loc[:rebalance_date])
+        ranked = _apply_liquidity_filter(ranked, close.loc[:rebalance_date], volume.loc[:rebalance_date], request.minLiquidityCrore)
         diagnostics_samples.extend(_diagnostic_samples(factor_scores, close, rebalance_date, next_date))
         selected = _select_with_sector_caps(ranked, request.topN, fundamentals, request.sectorNeutral, request.maxSectorWeight)
         if selected.empty:
@@ -62,6 +67,7 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
             continue
 
         target_weights = _target_weights(request.weightingMethod, selected, close.loc[:rebalance_date])
+        target_weights = _cap_position_weights(target_weights, request.maxPositionWeight)
         turnover = _one_way_turnover(current_weights, target_weights)
         cost = turnover * transaction_cost_rate
         period_mask = (returns.index > rebalance_date) & (returns.index <= next_date)
@@ -86,6 +92,19 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
                 ],
             }
         )
+        current_symbols = set(selected.index)
+        rebalance_journal.append(
+            _journal_entry(
+                rebalance_date,
+                selected,
+                factor_scores,
+                fundamentals,
+                previous_symbols,
+                current_symbols,
+                turnover,
+            )
+        )
+        previous_symbols = current_symbols
         current_weights = target_weights
 
     strategy_wealth = wealth_index(portfolio_returns)
@@ -102,6 +121,10 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
     fund_category_comparison = _fund_category_comparison(comparisons)
     rolling_analysis = _rolling_analysis(portfolio_returns, comparisons)
     walk_forward = _walk_forward_snapshot(request, portfolio_returns)
+    data_confidence = _data_confidence(request, prices, symbols, fundamentals, factor_coverage_samples, warnings)
+    investability = _investability_snapshot(request, holdings, strategy_metrics, _sector_exposure(holdings))
+    risk_budget = _risk_budget_snapshot(strategy_metrics, comparisons, _sector_exposure(holdings))
+    research_verdict = _research_verdict(data_confidence, investability, risk_budget, walk_forward, holdings)
 
     return BacktestResponse(
         id=f"bt_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
@@ -130,6 +153,11 @@ def run_backtest(request: BacktestRequest) -> BacktestResponse:
         fundCategoryComparison=fund_category_comparison,
         rollingAnalysis=rolling_analysis,
         walkForward=walk_forward,
+        dataConfidence=data_confidence,
+        investability=investability,
+        riskBudget=risk_budget,
+        researchVerdict=research_verdict,
+        rebalanceJournal=rebalance_journal,
         warnings=warnings,
     )
 
@@ -241,6 +269,18 @@ def _apply_trend_filter(ranked: pd.Series, close: pd.DataFrame) -> pd.Series:
     return ranked.loc[passing]
 
 
+def _apply_liquidity_filter(ranked: pd.Series, close: pd.DataFrame, volume: pd.DataFrame, min_liquidity_crore: float) -> pd.Series:
+    if min_liquidity_crore <= 0:
+        return ranked
+    minimum_value = min_liquidity_crore * 10_000_000
+    passing = []
+    for symbol in ranked.index:
+        traded_value = average_traded_value(close[symbol], volume[symbol], 63)
+        if traded_value is not None and traded_value >= minimum_value:
+            passing.append(symbol)
+    return ranked.loc[passing]
+
+
 def _select_with_sector_caps(
     ranked: pd.Series,
     top_n: int,
@@ -279,6 +319,62 @@ def _target_weights(weighting_method: str, selected: pd.Series, close: pd.DataFr
             return inverse_vol / inverse_vol.sum()
 
     return pd.Series(1 / len(selected), index=selected.index)
+
+
+def _cap_position_weights(weights: pd.Series, max_position_weight: float) -> pd.Series:
+    if weights.empty or max_position_weight >= 1:
+        return weights
+    capped = weights.clip(upper=max_position_weight)
+    if capped.sum() == 0:
+        return weights
+    return capped / capped.sum()
+
+
+def _factor_coverage(factor_scores: dict[str, pd.Series], symbols: list[str], rebalance_date: pd.Timestamp) -> dict:
+    universe_size = max(1, len(symbols))
+    coverages = {
+        factor_id: float(scores.dropna().index.intersection(symbols).size / universe_size)
+        for factor_id, scores in factor_scores.items()
+    }
+    average = float(sum(coverages.values()) / len(coverages)) if coverages else 0.0
+    return {"rebalanceDate": rebalance_date.date().isoformat(), "averageCoverage": average, "factors": coverages}
+
+
+def _journal_entry(
+    rebalance_date: pd.Timestamp,
+    selected: pd.Series,
+    factor_scores: dict[str, pd.Series],
+    fundamentals: pd.DataFrame,
+    previous_symbols: set[str],
+    current_symbols: set[str],
+    turnover: float,
+) -> dict:
+    added = sorted(current_symbols - previous_symbols)
+    removed = sorted(previous_symbols - current_symbols)
+    retained = sorted(current_symbols.intersection(previous_symbols))
+    return {
+        "rebalanceDate": rebalance_date.date().isoformat(),
+        "turnover": float(turnover),
+        "added": [_journal_symbol(symbol, selected, factor_scores, fundamentals, "entered portfolio") for symbol in added],
+        "removed": [{"symbol": symbol, "reason": "Dropped out of the selected top-ranked portfolio"} for symbol in removed],
+        "retained": [_journal_symbol(symbol, selected, factor_scores, fundamentals, "retained by rank") for symbol in retained],
+    }
+
+
+def _journal_symbol(symbol: str, selected: pd.Series, factor_scores: dict[str, pd.Series], fundamentals: pd.DataFrame, action: str) -> dict:
+    contributions = {
+        factor_id: float(scores.get(symbol, 0))
+        for factor_id, scores in factor_scores.items()
+    }
+    strongest = sorted(contributions.items(), key=lambda item: item[1], reverse=True)[:3]
+    sector = str(fundamentals.loc[symbol, "sector"]) if symbol in fundamentals.index and "sector" in fundamentals.columns else "Unknown"
+    return {
+        "symbol": symbol,
+        "sector": sector,
+        "compositeScore": float(selected.get(symbol, 0)),
+        "reason": f"{action}; strongest factors: {', '.join(factor for factor, _value in strongest) if strongest else 'composite rank'}",
+        "topFactors": [{"factorId": factor, "score": score} for factor, score in strongest],
+    }
 
 
 def _diagnostic_samples(
@@ -578,6 +674,126 @@ def _average_metric(comparisons: list[ComparisonResult], key: str) -> float | No
 def _average_win_rate(comparisons: list[ComparisonResult]) -> float | None:
     clean = [float(comparison.monthlyWinRate) for comparison in comparisons if comparison.monthlyWinRate is not None]
     return float(sum(clean) / len(clean)) if clean else None
+
+
+def _data_confidence(
+    request: BacktestRequest,
+    prices: pd.DataFrame,
+    symbols: list[str],
+    fundamentals: pd.DataFrame,
+    factor_coverage_samples: list[dict],
+    warnings: list[WarningMessage],
+) -> dict:
+    expected_symbols = max(1, len(symbols))
+    price_symbols = prices["symbol"].nunique() if "symbol" in prices else 0
+    price_coverage = float(price_symbols / expected_symbols)
+    fundamental_columns = [column for column in fundamentals.columns if column not in {"sector"}]
+    fundamental_coverage = 1.0
+    if fundamental_columns:
+        fundamental_coverage = float(1 - fundamentals[fundamental_columns].isna().mean().mean())
+    factor_coverage = (
+        float(pd.Series([sample["averageCoverage"] for sample in factor_coverage_samples]).mean())
+        if factor_coverage_samples
+        else 0.0
+    )
+    fallback_penalty = 0.2 if any("FALLBACK" in warning.code for warning in warnings) else 0.0
+    demo_penalty = 0.1 if request.dataSource == "demo" else 0.0
+    score = max(0.0, min(1.0, (price_coverage * 0.4) + (fundamental_coverage * 0.25) + (factor_coverage * 0.35) - fallback_penalty - demo_penalty))
+    level = "high" if score >= 0.8 else "medium" if score >= 0.55 else "low"
+    missing_symbols = sorted(set(symbols) - set(prices["symbol"].unique())) if "symbol" in prices else symbols
+    return {
+        "level": level,
+        "score": score,
+        "priceCoverage": price_coverage,
+        "fundamentalCoverage": fundamental_coverage,
+        "factorCoverage": factor_coverage,
+        "source": request.dataSource,
+        "missingSymbols": missing_symbols[:20],
+        "warningCodes": [warning.code for warning in warnings],
+    }
+
+
+def _investability_snapshot(request: BacktestRequest, holdings: list[dict], strategy_metrics: dict[str, float | None], sector_exposure: list[dict]) -> dict:
+    latest = holdings[-1]["symbols"] if holdings else []
+    max_position = max([holding["weight"] for holding in latest], default=0.0)
+    annual_turnover = strategy_metrics.get("annualTurnover") or 0.0
+    max_sector = max([sector["weight"] for sector in sector_exposure], default=0.0)
+    checks = [
+        _check("position_size", max_position <= request.maxPositionWeight + 0.0001, f"Largest position is {max_position:.1%}; budget is {request.maxPositionWeight:.1%}."),
+        _check("turnover_budget", annual_turnover <= request.maxAnnualTurnover, f"Annual turnover is {annual_turnover:.1%}; budget is {request.maxAnnualTurnover:.1%}."),
+        _check("sector_concentration", max_sector <= request.maxSectorWeight + 0.0001 or not request.sectorNeutral, f"Largest sector is {max_sector:.1%}; cap is {request.maxSectorWeight:.1%}."),
+        _check("holding_count", len(latest) >= min(request.topN, 8), f"Portfolio holds {len(latest)} stocks; target is {request.topN}."),
+    ]
+    failed = sum(1 for check in checks if check["status"] == "fail")
+    verdict = "investable" if failed == 0 else "watch" if failed <= 2 else "not_investable"
+    return {"verdict": verdict, "checks": checks}
+
+
+def _risk_budget_snapshot(strategy_metrics: dict[str, float | None], comparisons: list[ComparisonResult], sector_exposure: list[dict]) -> dict:
+    volatility = strategy_metrics.get("volatility") or 0.0
+    max_drawdown = strategy_metrics.get("max_drawdown") or 0.0
+    max_sector = max([sector["weight"] for sector in sector_exposure], default=0.0)
+    benchmark = next((comparison for comparison in comparisons if comparison.type == "benchmark"), None)
+    benchmark_vol = benchmark.metrics.get("volatility") if benchmark else None
+    if abs(max_drawdown) <= 0.18 and volatility <= 0.18:
+        risk_level = "conservative"
+    elif abs(max_drawdown) <= 0.28 and volatility <= 0.25:
+        risk_level = "balanced"
+    elif abs(max_drawdown) <= 0.4 and volatility <= 0.35:
+        risk_level = "aggressive"
+    else:
+        risk_level = "speculative"
+    return {
+        "riskLevel": risk_level,
+        "volatility": volatility,
+        "benchmarkVolatility": benchmark_vol,
+        "maxDrawdown": max_drawdown,
+        "maxSectorWeight": max_sector,
+        "notes": _risk_notes(risk_level, volatility, max_drawdown, max_sector),
+    }
+
+
+def _research_verdict(data_confidence: dict, investability: dict, risk_budget: dict, walk_forward: dict, holdings: list[dict]) -> dict:
+    reasons = []
+    status = "pass"
+    if data_confidence["level"] == "low":
+        status = "reject"
+        reasons.append("Data confidence is low.")
+    if not holdings:
+        status = "reject"
+        reasons.append("No holdings were produced.")
+    if investability["verdict"] == "not_investable":
+        status = "reject"
+        reasons.append("Investability guardrails failed.")
+    elif investability["verdict"] == "watch" and status != "reject":
+        status = "watch"
+        reasons.append("Some investability checks need review.")
+    if risk_budget["riskLevel"] == "speculative":
+        status = "reject" if status == "reject" else "watch"
+        reasons.append("Risk budget is speculative.")
+    if walk_forward.get("status") != "completed" and status == "pass":
+        status = "watch"
+        reasons.append("Walk-forward validation is incomplete.")
+    degradation = walk_forward.get("degradation", {}) if isinstance(walk_forward, dict) else {}
+    if degradation.get("cagr") is not None and degradation["cagr"] < -0.1 and status == "pass":
+        status = "watch"
+        reasons.append("Out-of-sample CAGR degraded materially.")
+    if not reasons:
+        reasons.append("Data quality, investability, risk, and validation checks are acceptable for further research.")
+    return {"status": status, "reasons": reasons}
+
+
+def _check(name: str, passed: bool, detail: str) -> dict:
+    return {"name": name, "status": "pass" if passed else "fail", "detail": detail}
+
+
+def _risk_notes(risk_level: str, volatility: float, max_drawdown: float, max_sector: float) -> list[str]:
+    return [
+        f"Risk level is {risk_level}.",
+        f"Annualized volatility is {volatility:.1%}.",
+        f"Maximum drawdown is {max_drawdown:.1%}.",
+        f"Largest sector exposure is {max_sector:.1%}.",
+    ]
 
 
 def _benchmark_series(request: BacktestRequest, warnings: list[WarningMessage]) -> pd.Series:

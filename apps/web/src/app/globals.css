@@ -537,6 +537,42 @@ select:focus {
   min-width: 0;
 }
 
+.verdict-panel {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(220px, 0.35fr) minmax(0, 1fr);
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.verdict-panel h2 {
+  margin-top: 8px;
+  font-size: clamp(1.9rem, 4vw, 3.6rem);
+  line-height: 1;
+}
+
+.verdict-panel.pass {
+  border-color: #86efac;
+}
+
+.verdict-panel.watch {
+  border-color: #facc15;
+}
+
+.verdict-panel.reject {
+  border-color: #fca5a5;
+}
+
+.verdict-reasons {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
 .metrics-grid {
   display: grid;
   grid-column: 1 / -1;
@@ -569,7 +605,7 @@ select:focus {
 
 .mini-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
 }
 
@@ -588,6 +624,65 @@ select:focus {
 .mini-metrics strong {
   font-size: 1.2rem;
   font-variant-numeric: tabular-nums;
+}
+
+.check-list,
+.journal-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.check-row {
+  display: grid;
+  grid-template-columns: 52px minmax(110px, 0.35fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.check-row strong {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.check-row.pass strong {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.check-row.fail strong {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.check-row span {
+  font-weight: 800;
+}
+
+.journal-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.journal-column {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.journal-column div {
+  display: grid;
+  gap: 4px;
+}
+
+.journal-column span {
+  font-weight: 800;
 }
 
 .wide {
@@ -756,6 +851,12 @@ th {
   }
 
   .mini-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .verdict-panel,
+  .check-row,
+  .journal-grid {
     grid-template-columns: 1fr;
   }
 

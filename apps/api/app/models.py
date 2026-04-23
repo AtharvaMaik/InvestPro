@@ -24,6 +24,9 @@ class BacktestRequest(BaseModel):
     trendFilter: bool = False
     sectorNeutral: bool = False
     maxSectorWeight: float = Field(default=0.3, ge=0.05, le=1.0)
+    maxPositionWeight: float = Field(default=0.1, ge=0.01, le=1.0)
+    minLiquidityCrore: float = Field(default=0, ge=0)
+    maxAnnualTurnover: float = Field(default=3.0, ge=0.1, le=20)
     factors: list[FactorSelection]
     benchmarks: list[str] = Field(default_factory=list)
     mutualFunds: list[str] = Field(default_factory=list)
@@ -73,4 +76,9 @@ class BacktestResponse(BaseModel):
     fundCategoryComparison: list[dict] = Field(default_factory=list)
     rollingAnalysis: dict = Field(default_factory=dict)
     walkForward: dict = Field(default_factory=dict)
+    dataConfidence: dict = Field(default_factory=dict)
+    investability: dict = Field(default_factory=dict)
+    riskBudget: dict = Field(default_factory=dict)
+    researchVerdict: dict = Field(default_factory=dict)
+    rebalanceJournal: list[dict] = Field(default_factory=list)
     warnings: list[WarningMessage]

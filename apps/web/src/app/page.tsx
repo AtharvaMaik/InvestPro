@@ -39,6 +39,9 @@ export default function Home() {
           trendFilter: true,
           sectorNeutral: true,
           maxSectorWeight: 0.3,
+          maxPositionWeight: 0.08,
+          minLiquidityCrore: 1,
+          maxAnnualTurnover: 2,
           factors: data.factors.map((factor) => ({
             id: factor.id,
             weight:
