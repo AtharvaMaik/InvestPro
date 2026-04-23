@@ -30,6 +30,13 @@ export type MutualFund = {
   source: string;
 };
 
+export type StockOption = {
+  symbol: string;
+  name: string;
+  sector: string;
+  source: string;
+};
+
 export type BacktestRequest = {
   dataSource: "demo" | "live";
   universeId: string;
@@ -224,18 +231,20 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 export async function getMetadata(source: "demo" | "live" = "live") {
-  const [universes, factors, benchmarks, mutualFunds] = await Promise.all([
+  const [universes, factors, benchmarks, mutualFunds, stocks] = await Promise.all([
     getJson<{ universes: Universe[] }>("/universes"),
     getJson<{ factors: FactorMeta[] }>("/factors"),
     getJson<{ benchmarks: Benchmark[] }>("/benchmarks"),
-    getJson<{ results: MutualFund[] }>(`/mutual-funds/search?source=${source}`)
+    getJson<{ results: MutualFund[] }>(`/mutual-funds/search?source=${source}`),
+    getJson<{ stocks: StockOption[] }>("/stocks")
   ]);
 
   return {
     universes: universes.universes,
     factors: factors.factors,
     benchmarks: benchmarks.benchmarks,
-    mutualFunds: mutualFunds.results
+    mutualFunds: mutualFunds.results,
+    stocks: stocks.stocks
   };
 }
 

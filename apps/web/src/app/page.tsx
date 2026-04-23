@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import { ResultsDashboard } from "@/components/results-dashboard";
 import { StrategyBuilder } from "@/components/strategy-builder";
-import type { BacktestRequest, BacktestResponse, Benchmark, FactorMeta, MutualFund, Universe } from "@/lib/api";
+import type { BacktestRequest, BacktestResponse, Benchmark, FactorMeta, MutualFund, StockOption, Universe } from "@/lib/api";
 import { getMetadata, runBacktest } from "@/lib/api";
 
 type MetadataState = {
@@ -13,6 +13,7 @@ type MetadataState = {
   factors: FactorMeta[];
   benchmarks: Benchmark[];
   mutualFunds: MutualFund[];
+  stocks: StockOption[];
 };
 
 export default function Home() {
@@ -113,6 +114,7 @@ export default function Home() {
           factors={metadata.factors}
           benchmarks={metadata.benchmarks}
           mutualFunds={metadata.mutualFunds}
+          stocks={metadata.stocks}
           config={config}
           activePresetId={activePresetId}
           isRunning={isRunning}

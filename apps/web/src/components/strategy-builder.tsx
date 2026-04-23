@@ -1,6 +1,8 @@
 "use client";
 
-import type { BacktestRequest, Benchmark, FactorMeta, MutualFund, Universe } from "@/lib/api";
+import { useMemo, useState } from "react";
+
+import type { BacktestRequest, Benchmark, FactorMeta, MutualFund, StockOption, Universe } from "@/lib/api";
 import { InfoButton } from "@/components/info-button";
 import { glossary } from "@/lib/glossary";
 import { applyPreset, strategyPresets } from "@/lib/presets";
@@ -10,6 +12,7 @@ type Props = {
   factors: FactorMeta[];
   benchmarks: Benchmark[];
   mutualFunds: MutualFund[];
+  stocks: StockOption[];
   config: BacktestRequest;
   activePresetId: string | null;
   isRunning: boolean;
@@ -18,11 +21,21 @@ type Props = {
   onRun: () => void;
 };
 
-export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, config, activePresetId, isRunning, onChange, onPresetChange, onRun }: Props) {
+export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, stocks, config, activePresetId, isRunning, onChange, onPresetChange, onRun }: Props) {
+  const [holdingSearch, setHoldingSearch] = useState("");
   const update = (patch: Partial<BacktestRequest>) => onChange({ ...config, ...patch });
   const activeWeight = config.factors.reduce((sum, factor) => sum + Math.abs(factor.weight), 0);
   const invalid = activeWeight === 0 || config.startDate >= config.endDate;
   const activeFactors = config.factors.filter((factor) => factor.weight > 0);
+  const selectedStock = stocks.find((stock) => stock.symbol === holdingSearch);
+  const filteredStocks = useMemo(() => {
+    const query = holdingSearch.trim().toLowerCase();
+    const available = stocks.filter((stock) => !config.currentHoldings.some((holding) => holding.symbol === stock.symbol));
+    if (!query) return available.slice(0, 8);
+    return available
+      .filter((stock) => [stock.symbol, stock.name, stock.sector].some((value) => value.toLowerCase().includes(query)))
+      .slice(0, 8);
+  }, [config.currentHoldings, holdingSearch, stocks]);
 
   function setFactorWeight(id: string, weight: number) {
     update({
@@ -41,6 +54,13 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
     update({
       currentHoldings: config.currentHoldings.map((holding, position) => (position === index ? { ...holding, ...patch } : holding))
     });
+  }
+
+  function addSelectedHolding() {
+    const stock = selectedStock ?? filteredStocks[0];
+    if (!stock) return;
+    update({ currentHoldings: [...config.currentHoldings, { symbol: stock.symbol, value: 0, shares: null }] });
+    setHoldingSearch("");
   }
 
   return (
@@ -229,15 +249,49 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
             onChange={(event) => update({ portfolioCapital: Number(event.target.value) })}
           />
         </label>
+        <div className="stock-combobox">
+          <label className="field compact-field">
+            <span>Search stock</span>
+            <input
+              aria-label="Search stock to add"
+              list="portfolio-stock-options"
+              placeholder="Search RELIANCE, bank, IT..."
+              value={holdingSearch}
+              onChange={(event) => setHoldingSearch(event.target.value.toUpperCase())}
+            />
+          </label>
+          <datalist id="portfolio-stock-options">
+            {stocks.map((stock) => (
+              <option key={stock.symbol} value={stock.symbol}>
+                {stock.name} - {stock.sector}
+              </option>
+            ))}
+          </datalist>
+          <button className="secondary-button" type="button" onClick={addSelectedHolding} disabled={!selectedStock && filteredStocks.length === 0}>
+            Add selected stock
+          </button>
+          {holdingSearch ? (
+            <div className="stock-suggestions" role="listbox" aria-label="Stock suggestions">
+              {filteredStocks.map((stock) => (
+                <button key={stock.symbol} type="button" onClick={() => setHoldingSearch(stock.symbol)}>
+                  <strong>{stock.symbol}</strong>
+                  <span>{stock.name} - {stock.sector}</span>
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
         <div className="holding-editor">
           {config.currentHoldings.map((holding, index) => (
             <div className="holding-row" key={index}>
-              <input
-                aria-label="Holding symbol"
-                placeholder="RELIANCE.NS"
-                value={holding.symbol}
-                onChange={(event) => updateHolding(index, { symbol: event.target.value.toUpperCase() })}
-              />
+              <select aria-label="Holding symbol" value={holding.symbol} onChange={(event) => updateHolding(index, { symbol: event.target.value })}>
+                <option value="">Select stock</option>
+                {stocks.map((stock) => (
+                  <option key={stock.symbol} value={stock.symbol}>
+                    {stock.symbol}
+                  </option>
+                ))}
+              </select>
               <input
                 aria-label="Holding value"
                 min="0"
@@ -258,9 +312,6 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, c
             </div>
           ))}
         </div>
-        <button className="secondary-button" type="button" onClick={() => update({ currentHoldings: [...config.currentHoldings, { symbol: "", value: 0 }] })}>
-          Add current holding
-        </button>
       </div>
 
       <div className="factor-list">

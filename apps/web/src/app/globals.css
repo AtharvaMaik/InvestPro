@@ -555,6 +555,44 @@ select:focus {
   gap: 8px;
 }
 
+.stock-combobox {
+  display: grid;
+  gap: 8px;
+}
+
+.stock-suggestions {
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  padding: 6px;
+}
+
+.stock-suggestions button {
+  display: grid;
+  gap: 3px;
+  min-height: 42px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  padding: 8px;
+  text-align: left;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.stock-suggestions button:hover,
+.stock-suggestions button:focus {
+  background: rgba(15, 118, 110, 0.08);
+}
+
+.stock-suggestions span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
 .holding-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 92px 82px auto;

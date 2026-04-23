@@ -24,6 +24,16 @@ def test_metadata_endpoints():
     assert client.get("/mutual-funds/search").json()["results"][0]["source"] == "mfapi"
 
 
+def test_stocks_endpoint_returns_searchable_universe():
+    response = client.get("/stocks")
+    assert response.status_code == 200
+    stocks = response.json()["stocks"]
+    assert len(stocks) >= 40
+    assert {"symbol", "name", "sector", "source"}.issubset(stocks[0])
+    assert any(stock["symbol"] == "RELIANCE.NS" for stock in stocks)
+    assert all(stock["source"] == "live" for stock in stocks)
+
+
 def test_default_mutual_fund_menu_has_multiple_categories():
     response = client.get("/mutual-funds/search")
     assert response.status_code == 200

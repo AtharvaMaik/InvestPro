@@ -38,6 +38,22 @@ def universes() -> dict[str, list[dict]]:
     }
 
 
+@app.get("/stocks")
+def stocks() -> dict[str, list[dict]]:
+    fundamentals = demo.fundamentals().set_index("symbol")
+    return {
+        "stocks": [
+            {
+                "symbol": symbol,
+                "name": symbol.replace(".NS", ""),
+                "sector": str(fundamentals.loc[symbol, "sector"]) if symbol in fundamentals.index else "Unknown",
+                "source": "live",
+            }
+            for symbol in demo.SYMBOLS
+        ]
+    }
+
+
 @app.get("/factors")
 def factors() -> dict[str, list[dict]]:
     demo_only = {"quality_score", "value_score"}
