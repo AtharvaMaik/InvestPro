@@ -25,6 +25,15 @@ def test_enrich_holding_uses_shares_when_value_missing():
     assert result["currentWeight"] == 0.2
 
 
+def test_enrich_holding_uses_shares_when_manual_value_is_zero_placeholder():
+    holding = {"symbol": "TCS.NS", "value": 0, "shares": 5, "averageCost": 3000}
+    result = enrich_holding(holding, {"TCS.NS": 4000}, portfolio_value=100000)
+
+    assert result["currentValue"] == 20000
+    assert result["currentValueSource"] == "shares"
+    assert result["unrealizedPnl"] == 5000
+
+
 def test_summarize_portfolio_includes_cash_and_unrealized_pnl():
     holdings = [
         {"symbol": "TCS.NS", "shares": 5, "averageCost": 3000},

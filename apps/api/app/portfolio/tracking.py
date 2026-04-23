@@ -10,7 +10,7 @@ def enrich_holding(holding: dict, latest_prices: dict[str, float | None], portfo
 
     current_value_source = "missing"
     current_value = 0.0
-    if manual_value is not None:
+    if manual_value is not None and (manual_value > 0 or shares is None):
         current_value = manual_value
         current_value_source = "manual_value"
     elif shares is not None and latest_price is not None:

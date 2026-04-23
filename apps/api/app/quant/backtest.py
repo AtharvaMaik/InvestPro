@@ -874,7 +874,7 @@ def _rebalance_trades(
     for holding in request.currentHoldings:
         price = latest_prices.get(holding.symbol, 0)
         current_value = holding.value
-        if current_value is None and holding.shares is not None:
+        if (current_value is None or (current_value == 0 and holding.shares is not None)) and holding.shares is not None:
             current_value = holding.shares * price
         current[holding.symbol] = float(current_value or 0)
 

@@ -60,7 +60,7 @@ export function StrategyBuilder({ universes, factors, benchmarks, mutualFunds, s
   function addSelectedHolding() {
     const stock = selectedStock ?? filteredStocks[0];
     if (!stock) return;
-    update({ currentHoldings: [...config.currentHoldings, { symbol: stock.symbol, value: 0, shares: null, averageCost: null, notes: "" }] });
+    update({ currentHoldings: [...config.currentHoldings, { symbol: stock.symbol, value: null, shares: null, averageCost: null, notes: "" }] });
     setHoldingSearch("");
   }
 
