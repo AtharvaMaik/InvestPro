@@ -200,7 +200,8 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
 
       <div className="chart-panel wide">
         <div className="panel-title">
-          <h2>V4 Rebalance Trades</h2>
+          <h2>Rebalance Trades</h2>
+          <span>Zero current exposure is expected for fresh buys</span>
           <button className="mini-action-button" type="button" onClick={() => downloadTrades(result.rebalanceTrades)}>
             Export CSV
           </button>
@@ -211,7 +212,7 @@ export function ResultsDashboard({ result, isLoading, error }: Props) {
               <tr>
                 <th>Symbol</th>
                 <th>Action</th>
-                <th>Current</th>
+                <th>Current Exposure</th>
                 <th>Target</th>
                 <th>Trade</th>
                 <th>Shares</th>

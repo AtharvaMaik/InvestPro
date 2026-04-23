@@ -7,14 +7,16 @@ type Props = {
 export function PortfolioTracker({ result }: Props) {
   const summary = result.portfolioSummary;
   const rows = result.trackedHoldings ?? [];
-  if (!summary || !rows.length) {
+  const hasCurrentHoldings = (summary?.holdingCount ?? 0) > 0;
+
+  if (!summary || !hasCurrentHoldings) {
     return (
       <div className="chart-panel wide">
         <div className="panel-title">
           <h2>V6 Portfolio Tracker</h2>
           <span>No current holdings entered</span>
         </div>
-        <p>Add current holdings in Portfolio Setup to see value, P&L, and allocation drift.</p>
+        <p>Add current holdings in Portfolio Setup to see live value, cost basis, P&amp;L, and allocation drift against the model portfolio.</p>
       </div>
     );
   }
