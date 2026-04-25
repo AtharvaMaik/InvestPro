@@ -1,6 +1,6 @@
 # InvestPro Project Details
 
-Date: 2026-04-23
+Date: 2026-04-26
 
 ## 1. Product Contract
 
@@ -13,6 +13,11 @@ The app-facing product is live-data only. Seeded demo utilities may remain in th
 V4 adds portfolio workflow fields: `portfolioCapital`, `currentHoldings`, `allocationPlan`, `rebalanceTrades`, and `executionChecklist`. These convert model target weights into rupee-level research allocations and rebalance actions while keeping the product framed as research software, not personalized advice.
 
 V5 begins by making current portfolio entry data-backed. The frontend fetches the stock universe from `GET /stocks`, lets the user search by symbol, display name, or sector, and adds the selected stock into `currentHoldings` with optional rupee value and share quantity. This removes fragile manual symbol typing from the main workflow.
+
+V6 adds two operational hardening changes:
+
+- Session auth no longer relies on a public default signing secret. Production should set `INVESTPRO_SESSION_SECRET`. If it is absent, the API now creates and reuses a local file-backed fallback secret at `apps/api/.investpro-session-secret`, which preserves sessions across restarts on the same machine without checking any secret into git.
+- The web app now uses an ESLint flat-config workflow compatible with Next.js 16, so `npm run lint` is a real verification step instead of a broken legacy command.
 
 The default V1 flow is:
 
@@ -745,6 +750,69 @@ Response:
 }
 ```
 
+### 7.1.1 `POST /auth/login`
+
+Purpose: create a lightweight signed session token for the current browser session.
+
+Request:
+
+```json
+{
+  "email": "investor@example.com",
+  "name": "Investor"
+}
+```
+
+Response:
+
+```json
+{
+  "token": "<signed-session-token>",
+  "email": "investor@example.com",
+  "name": "Investor"
+}
+```
+
+Behavior:
+
+- The email must contain `@` or the request is rejected.
+- The API lowercases and trims the email before signing.
+- The signed token has a 14-day TTL.
+- Signing key priority:
+  1. `INVESTPRO_SESSION_SECRET`
+  2. `INVESTPRO_SESSION_SECRET_FILE`
+  3. default local file `apps/api/.investpro-session-secret`
+
+### 7.1.2 `GET /me`
+
+Purpose: validate the current bearer token and return the signed-in user identity.
+
+Request headers:
+
+```text
+Authorization: Bearer <signed-session-token>
+```
+
+Response:
+
+```json
+{
+  "email": "investor@example.com",
+  "name": "Investor"
+}
+```
+
+If the bearer token is missing, invalid, tampered with, or expired, the API returns:
+
+```json
+{
+  "detail": {
+    "code": "UNAUTHORIZED",
+    "message": "Sign in is required."
+  }
+}
+```
+
 Frontend use:
 
 1. Fetch once during initial metadata load.
@@ -889,6 +957,7 @@ HTTP status: `404`.
 | `INSUFFICIENT_DATA` | 422 | Not enough stock data for selected factors. | Explain which factor needs more history. |
 | `COMPARISON_NOT_FOUND` | 404 | Benchmark or mutual fund id does not exist. | Remove invalid comparison and prompt reselection. |
 | `PROVIDER_FAILURE` | 502 | External provider failed. | Offer retry and keep cached/demo data if available. |
+| `UNAUTHORIZED` | 401 | Session token is missing, invalid, or expired. | Ask the user to sign in again. |
 | `LIVE_DATA_FALLBACK` | 200 | Live stock data failed and seeded demo prices were used. | Show a warning while keeping the backtest usable. |
 | `LIVE_BENCHMARK_FALLBACK` | 200 | Live benchmark data failed and seeded benchmark data was used. | Show a warning in comparison areas. |
 | `LIVE_MUTUAL_FUND_FALLBACK` | 200 | Live mutual fund NAV data failed and seeded NAV data was used. | Show a warning in mutual fund comparison areas. |
@@ -1075,6 +1144,10 @@ Tests must verify:
 Tests must verify:
 
 - health endpoint response
+- auth token roundtrip
+- auth token tamper rejection
+- auth fallback secret is not the old public default
+- auth fallback secret persists across module reload when file-backed
 - metadata endpoints
 - searchable stock universe endpoint
 - valid backtest request
@@ -1106,6 +1179,55 @@ The seeded demo dataset must allow the complete product to run without live netw
 6. Confirm equity curve and drawdown render.
 7. Confirm mutual fund comparison renders.
 8. Confirm holdings table renders.
+
+### 12.5 Frontend Tooling Verification
+
+The web app must pass these checks in the current toolchain:
+
+1. `npm run lint`
+2. `npm run build`
+
+The lint command uses ESLint flat config and must remain compatible with Next.js 16. Do not reintroduce the removed `next lint` CLI pattern.
+
+## 14. Operational Notes
+
+### 14.1 Session Secret Storage
+
+Session security rules:
+
+- Never use a hardcoded public signing secret.
+- Prefer `INVESTPRO_SESSION_SECRET` in production and preview deployments.
+- For local development, if no env secret is provided, create a private local fallback secret file.
+- Keep the fallback file ignored by git.
+
+Default local fallback path:
+
+```text
+apps/api/.investpro-session-secret
+```
+
+Optional override:
+
+```text
+INVESTPRO_SESSION_SECRET_FILE=C:\path\to\investpro-session-secret.txt
+```
+
+Result:
+
+- Local sessions survive API restarts on the same machine.
+- Fresh clones do not share a signing secret.
+- Production deployments can remain stateless by supplying an environment secret.
+
+### 14.2 Frontend Tooling Status
+
+Current web tooling status:
+
+- Next.js 16 app router
+- React 19
+- TypeScript 5
+- ESLint 9 flat config
+
+The repository now treats lint as a first-class verification step. Any project changes should keep both lint and production build green.
 
 ## 13. Implementation Principle
 

@@ -5,7 +5,10 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import time
+from functools import lru_cache
+from pathlib import Path
 
 
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 14
@@ -46,7 +49,28 @@ def _sign(body: str) -> str:
 
 
 def _secret() -> bytes:
-    return os.getenv("INVESTPRO_SESSION_SECRET", "investpro-development-session-secret").encode("utf-8")
+    configured = os.getenv("INVESTPRO_SESSION_SECRET")
+    if configured:
+        return configured.encode("utf-8")
+    return _persistent_fallback_secret()
+
+
+@lru_cache(maxsize=1)
+def _persistent_fallback_secret() -> bytes:
+    secret_file = Path(os.getenv("INVESTPRO_SESSION_SECRET_FILE", _default_secret_file()))
+    secret_file.parent.mkdir(parents=True, exist_ok=True)
+    if secret_file.exists():
+        stored = secret_file.read_text(encoding="utf-8").strip()
+        if stored:
+            return stored.encode("utf-8")
+
+    generated = secrets.token_urlsafe(32)
+    secret_file.write_text(generated, encoding="utf-8")
+    return generated.encode("utf-8")
+
+
+def _default_secret_file() -> str:
+    return str(Path(__file__).resolve().parents[2] / ".investpro-session-secret")
 
 
 def _b64(value: bytes) -> str:

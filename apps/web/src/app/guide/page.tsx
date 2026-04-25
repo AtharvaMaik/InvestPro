@@ -186,7 +186,7 @@ export default function GuidePage() {
           </p>
         </div>
         <div className="source-links">
-          <a href="https://investor.sebi.gov.in/securities-dos_and_donts.html" target="_blank" rel="noreferrer">SEBI investor do's and don'ts</a>
+          <a href="https://investor.sebi.gov.in/securities-dos_and_donts.html" target="_blank" rel="noreferrer">SEBI investor do&apos;s and don&apos;ts</a>
           <a href="https://investor.sebi.gov.in/cautiontoinvestor.html" target="_blank" rel="noreferrer">SEBI caution to investors</a>
           <a href="https://www.amfiindia.com/investor/knowledge-center-info?zoneName=riskInMutualFunds" target="_blank" rel="noreferrer">AMFI risk in mutual funds</a>
         </div>

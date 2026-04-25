@@ -13,3 +13,4 @@ __pycache__/
 .env
 .env.local
 .vercel
+apps/api/.investpro-session-secret
